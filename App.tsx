@@ -7,8 +7,17 @@ import AdminPanel from './components/AdminPanel';
 import { getRankingInsights } from './services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
+// Senha mestra para demonstração - em produção isso viria de um backend
+const ADMIN_PASSWORD = "x5admin2024";
+
 const App: React.FC = () => {
   const [view, setView] = useState<ViewType>('ranking');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return sessionStorage.getItem('x5_is_admin') === 'true';
+  });
+  const [adminPasswordInput, setAdminPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState(false);
+
   const [players, setPlayers] = useState<Player[]>(() => {
     const saved = localStorage.getItem('x5_players');
     return saved ? JSON.parse(saved) : INITIAL_PLAYERS;
@@ -32,13 +41,31 @@ const App: React.FC = () => {
     localStorage.setItem('x5_stats', JSON.stringify(stats));
   }, [players, seasons, stats]);
 
+  const handleAdminLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (adminPasswordInput === ADMIN_PASSWORD) {
+      setIsAdminAuthenticated(true);
+      sessionStorage.setItem('x5_is_admin', 'true');
+      setLoginError(false);
+      setAdminPasswordInput('');
+    } else {
+      setLoginError(true);
+      setAdminPasswordInput('');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAdminAuthenticated(false);
+    sessionStorage.removeItem('x5_is_admin');
+    setView('ranking');
+  };
+
   // Cálculo do Ranking Filtrado
   const currentRanking: FullRankingEntry[] = useMemo(() => {
     return stats
       .filter(s => s.seasonId === selectedSeasonId)
       .map(s => {
         const player = players.find(p => p.id === s.playerId);
-        // FÓRMULA CORRIGIDA: Vítimas / Mortes
         const kdValue = s.deaths === 0 ? s.kills : s.kills / s.deaths;
         return {
           ...s,
@@ -51,34 +78,36 @@ const App: React.FC = () => {
   }, [stats, selectedSeasonId, players]);
 
   const handleAddPlayer = (nick: string) => {
-    if (!nick) return;
+    if (!isAdminAuthenticated || !nick) return;
     const newPlayer = { id: `p${Date.now()}`, nick };
     setPlayers([...players, newPlayer]);
   };
 
   const handleEditPlayer = (id: string, newNick: string) => {
-    if (!newNick) return;
+    if (!isAdminAuthenticated || !newNick) return;
     setPlayers(players.map(p => p.id === id ? { ...p, nick: newNick } : p));
   };
 
   const handleDeletePlayer = (id: string) => {
+    if (!isAdminAuthenticated) return;
     setPlayers(players.filter(p => p.id !== id));
     setStats(stats.filter(s => s.playerId !== id));
   };
 
   const handleAddSeason = (name: string) => {
-    if (!name) return;
+    if (!isAdminAuthenticated || !name) return;
     const newSeason = { id: `s${Date.now()}`, name };
     setSeasons([...seasons, newSeason]);
     if (!selectedSeasonId) setSelectedSeasonId(newSeason.id);
   };
 
   const handleEditSeason = (id: string, newName: string) => {
-    if (!newName) return;
+    if (!isAdminAuthenticated || !newName) return;
     setSeasons(seasons.map(s => s.id === id ? { ...s, name: newName } : s));
   };
 
   const handleDeleteSeason = (id: string) => {
+    if (!isAdminAuthenticated) return;
     const updatedSeasons = seasons.filter(s => s.id !== id);
     setSeasons(updatedSeasons);
     setStats(stats.filter(s => s.seasonId !== id));
@@ -88,6 +117,7 @@ const App: React.FC = () => {
   };
 
   const handleUpdateStats = (entry: Omit<PlayerStats, 'id'>) => {
+    if (!isAdminAuthenticated) return;
     const existingIndex = stats.findIndex(
       s => s.playerId === entry.playerId && s.seasonId === entry.seasonId
     );
@@ -120,7 +150,7 @@ const App: React.FC = () => {
             </h1>
           </div>
           
-          <nav className="flex bg-slate-800 p-1 rounded-lg border border-slate-700">
+          <nav className="flex items-center gap-4 bg-slate-800 p-1 rounded-lg border border-slate-700">
             <button 
               onClick={() => setView('ranking')}
               className={`px-6 py-2 rounded-md font-bold transition-all ${view === 'ranking' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}
@@ -133,6 +163,17 @@ const App: React.FC = () => {
             >
               Gerenciar
             </button>
+            {isAdminAuthenticated && (
+              <button 
+                onClick={handleLogout}
+                className="px-3 py-2 text-rose-500 hover:bg-rose-500/10 rounded-md transition-colors"
+                title="Sair do Modo Admin"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clipRule="evenodd" />
+                </svg>
+              </button>
+            )}
           </nav>
         </div>
       </header>
@@ -237,9 +278,45 @@ const App: React.FC = () => {
 
             {currentRanking.length > 0 && <RankingTable data={currentRanking} />}
           </div>
+        ) : !isAdminAuthenticated ? (
+          <div className="max-w-md mx-auto mt-20 p-8 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-500">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-gaming font-bold text-center mb-2">Acesso Restrito</h2>
+            <p className="text-slate-400 text-center mb-8">Digite a chave de administrador para gerenciar jogadores e temporadas.</p>
+            
+            <form onSubmit={handleAdminLogin} className="space-y-4">
+              <div>
+                <input 
+                  type="password" 
+                  value={adminPasswordInput}
+                  onChange={(e) => setAdminPasswordInput(e.target.value)}
+                  placeholder="Senha Administrativa"
+                  className={`w-full bg-slate-800 border ${loginError ? 'border-rose-500 ring-rose-500' : 'border-slate-700'} rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 transition-all`}
+                  autoFocus
+                />
+                {loginError && <p className="text-rose-500 text-xs mt-2 font-bold animate-bounce">Chave de acesso incorreta.</p>}
+              </div>
+              <button 
+                type="submit"
+                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold shadow-lg shadow-blue-500/20 transition-all active:scale-95"
+              >
+                Entrar no Painel
+              </button>
+            </form>
+          </div>
         ) : (
           <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-            <h2 className="text-3xl font-gaming font-bold mb-8">Administração do Painel</h2>
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-3xl font-gaming font-bold">Administração do Painel</h2>
+              <div className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/20 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></span>
+                MODO ADMINISTRADOR ATIVO
+              </div>
+            </div>
             <AdminPanel 
               players={players} 
               seasons={seasons} 
