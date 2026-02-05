@@ -5,6 +5,7 @@ import RankingTable from './components/RankingTable';
 import AdminPanel from './components/AdminPanel';
 import { db } from './services/databaseService';
 import { getRankingInsights } from './services/geminiService';
+import { INITIAL_PLAYERS, INITIAL_SEASONS, INITIAL_STATS } from './constants';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const ADMIN_PASSWORD = "x5admin2024";
@@ -27,28 +28,52 @@ const App: React.FC = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
-  // CARREGAMENTO INICIAL - SEMPRE BUSCA DO SUPABASE PRIMEIRO
-  const loadData = async () => {
+  // CARREGAMENTO - PRIORIDADE NUVEM -> LOCAL -> CONSTANTES
+  const loadData = async (forceCloud = false) => {
     setIsLoading(true);
-    try {
-      const [p, s, st] = await Promise.all([
-        db.getPlayers(),
-        db.getSeasons(),
-        db.getStats()
-      ]);
-      
-      setPlayers(p);
-      setSeasons(s);
-      setStats(st);
-      
-      const cloudStatus = db.isCloudEnabled();
-      setIsCloudActive(cloudStatus);
+    setIsCloudActive(db.isCloudEnabled());
 
-      if (s.length > 0) {
-        setSelectedSeasonId(s[0].id);
+    try {
+      const cloudPlayers = await db.getPlayers();
+      const cloudSeasons = await db.getSeasons();
+      const cloudStats = await db.getStats();
+
+      // Se a nuvem retornou dados (mesmo que array vazio), ela é a fonte da verdade
+      if (cloudPlayers !== null && cloudSeasons !== null && cloudStats !== null) {
+        setPlayers(cloudPlayers);
+        setSeasons(cloudSeasons);
+        setStats(cloudStats);
+        
+        // Atualiza cache local
+        localStorage.setItem('x5_players', JSON.stringify(cloudPlayers));
+        localStorage.setItem('x5_seasons', JSON.stringify(cloudSeasons));
+        localStorage.setItem('x5_stats', JSON.stringify(cloudStats));
+        
+        if (cloudSeasons.length > 0 && !selectedSeasonId) {
+          setSelectedSeasonId(cloudSeasons[0].id);
+        }
+      } else {
+        // Se a nuvem falhou, tenta LocalStorage
+        const localPlayers = localStorage.getItem('x5_players');
+        const localSeasons = localStorage.getItem('x5_seasons');
+        const localStats = localStorage.getItem('x5_stats');
+
+        if (localPlayers && localSeasons && localStats) {
+          setPlayers(JSON.parse(localPlayers));
+          const parsedSeasons = JSON.parse(localSeasons);
+          setSeasons(parsedSeasons);
+          setStats(JSON.parse(localStats));
+          if (parsedSeasons.length > 0) setSelectedSeasonId(parsedSeasons[0].id);
+        } else if (!forceCloud) {
+          // Se não tem nada em lugar nenhum, usa os iniciais (apenas no primeiro boot da vida)
+          setPlayers(INITIAL_PLAYERS);
+          setSeasons(INITIAL_SEASONS);
+          setStats(INITIAL_STATS);
+          setSelectedSeasonId(INITIAL_SEASONS[0].id);
+        }
       }
     } catch (error) {
-      console.error("Falha ao sincronizar com banco de dados:", error);
+      console.error("Erro ao carregar dados:", error);
     } finally {
       setIsLoading(false);
     }
@@ -70,20 +95,15 @@ const App: React.FC = () => {
     }
   };
 
-  const handleLogout = () => {
-    setIsAdminAuthenticated(false);
-    sessionStorage.removeItem('x5_is_admin');
-    setView('ranking');
-  };
-
   const handleResetData = async () => {
-    if (window.confirm("Deseja deletar permanentemente todos os registros da nuvem?")) {
+    if (window.confirm("Isso apagará TUDO da nuvem e do seu navegador. Tem certeza?")) {
       setIsLoading(true);
       await db.clearDatabase();
       window.location.reload();
     }
   };
 
+  // Ranking derivado do estado atual (seja ele nuvem ou local editado)
   const currentRanking: FullRankingEntry[] = useMemo(() => {
     return stats
       .filter(s => s.seasonId === selectedSeasonId)
@@ -100,7 +120,7 @@ const App: React.FC = () => {
       .sort((a, b) => b.kd - a.kd);
   }, [stats, selectedSeasonId, players]);
 
-  // Ações de Memória (Só salvam no LocalStorage até o Admin clicar em "Publicar")
+  // AÇÕES ADMIN - Salvam no estado e no LocalStorage (cache de edição)
   const handleAddPlayer = (nick: string) => {
     const newPlayer = { id: `p${Date.now()}`, nick };
     const updated = [...players, newPlayer];
@@ -159,7 +179,6 @@ const App: React.FC = () => {
     localStorage.setItem('x5_stats', JSON.stringify(newStats));
   };
 
-  // FUNÇÃO PARA PUBLICAR NA NUVEM (MANUAL)
   const handlePublishToCloud = async () => {
     setIsLoading(true);
     try {
@@ -168,9 +187,9 @@ const App: React.FC = () => {
         db.saveSeasons(seasons),
         db.updateStats(stats)
       ]);
-      alert("✅ Sincronizado com o Supabase!");
+      alert("✅ Sincronizado com a Cloud PostgreSQL!");
     } catch (e) {
-      alert("❌ Erro ao sincronizar.");
+      alert("❌ Falha na sincronização.");
     } finally {
       setIsLoading(false);
     }
@@ -189,7 +208,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 font-gaming">
         <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-xl animate-pulse tracking-widest uppercase">Acessando Postgres Cloud...</p>
+        <p className="text-xl animate-pulse tracking-widest uppercase">Validando Banco Postgres...</p>
       </div>
     );
   }
@@ -207,7 +226,7 @@ const App: React.FC = () => {
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${isCloudActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
                 <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
-                  {isCloudActive ? 'Database Live' : 'Offline / Local'}
+                  {isCloudActive ? 'Database Cloud' : 'Database Local'}
                 </span>
               </div>
             </div>
@@ -216,7 +235,7 @@ const App: React.FC = () => {
           <nav className="flex items-center gap-4 bg-slate-800 p-1 rounded-xl border border-slate-700">
             <button onClick={() => setView('ranking')} className={`px-6 py-2 rounded-lg font-bold transition-all ${view === 'ranking' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
             <button onClick={() => setView('admin')} className={`px-6 py-2 rounded-lg font-bold transition-all ${view === 'admin' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Painel</button>
-            <button onClick={loadData} className="p-2 text-slate-400 hover:text-emerald-400 transition-colors" title="Recarregar do Banco">
+            <button onClick={() => loadData(true)} className="p-2 text-slate-400 hover:text-emerald-400 transition-colors" title="Sincronizar Agora">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
             </button>
           </nav>
@@ -226,10 +245,9 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 mt-8">
         {view === 'ranking' ? (
           <div className="space-y-8 animate-in fade-in duration-500">
-             {/* Conteúdo do Ranking permanece similar mas com dados garantidos do loadData */}
              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="w-full md:w-auto">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Temporada Ativa</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Filtrar Temporada</label>
                   <select value={selectedSeasonId} onChange={(e) => setSelectedSeasonId(e.target.value)} className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500/50 shadow-xl cursor-pointer">
                     {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>
@@ -244,7 +262,7 @@ const App: React.FC = () => {
                  <h3 className="text-emerald-400 font-bold mb-2 flex items-center gap-2">
                    ✨ Insights da Cloud IA
                  </h3>
-                 <p className="text-slate-300 italic leading-relaxed">{aiInsight}</p>
+                 <div className="text-slate-300 italic leading-relaxed whitespace-pre-wrap">{aiInsight}</div>
                </div>
              )}
 
@@ -284,24 +302,25 @@ const App: React.FC = () => {
                </div>
              ) : (
                <div className="text-center py-20 bg-slate-900/30 border border-slate-800 rounded-3xl border-dashed">
-                 <p className="text-slate-500 text-lg italic">Aguardando dados da nuvem...</p>
-                 <button onClick={loadData} className="mt-4 text-emerald-500 font-bold hover:underline">Tentar Reconectar</button>
+                 <p className="text-slate-500 text-lg italic">Nenhum registro nesta temporada.</p>
+                 <p className="text-xs text-slate-600 mt-2">Os dados da nuvem serão exibidos aqui.</p>
                </div>
              )}
           </div>
         ) : !isAdminAuthenticated ? (
           <div className="max-w-md mx-auto mt-20 p-10 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl animate-in zoom-in-95 duration-300">
-            <h2 className="text-2xl font-gaming font-bold text-center mb-6 text-emerald-400">Acesso Restrito</h2>
+            <h2 className="text-2xl font-gaming font-bold text-center mb-6 text-emerald-400">Acesso Administrativo</h2>
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <input 
                 type="password" 
                 value={adminPasswordInput} 
                 onChange={(e) => {setAdminPasswordInput(e.target.value); setLoginError(false);}} 
-                placeholder="Senha de Administrador" 
+                placeholder="Insira a senha master" 
                 className={`w-full bg-slate-800 border ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-xl px-4 py-4 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all`}
                 autoFocus 
               />
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Verificar Identidade</button>
+              {loginError && <p className="text-xs text-rose-500 font-bold ml-1">Senha incorreta!</p>}
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Entrar no Painel</button>
             </form>
           </div>
         ) : (
@@ -318,7 +337,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          Sincronizado via Supabase PostgreSQL & Google Gemini
+          X5 Friends Stats &bull; PostgreSQL Cloud Sync &bull; Google Gemini Analyser
         </p>
       </footer>
     </div>
