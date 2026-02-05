@@ -205,7 +205,7 @@ const App: React.FC = () => {
                 </select>
               </div>
 
-              <div className="flex gap-4">
+            <!--  <div className="flex gap-4">
                 <button 
                   onClick={generateAICommentary}
                   disabled={loadingAi || currentRanking.length === 0}
@@ -220,11 +220,11 @@ const App: React.FC = () => {
                       Analisando...
                     </span>
                   ) : (
-                    <></>
+                    <>✨ Análise por IA</>
                   )}
                 </button>
               </div>
-            </div>
+            </div>-->
 
             {aiInsight && (
               <div className="bg-slate-800/80 border border-purple-500/30 p-6 rounded-2xl relative overflow-hidden shadow-2xl">
