@@ -20,17 +20,15 @@ const App: React.FC = () => {
   const [stats, setStats] = useState<PlayerStats[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
-  const [isCloudActive, setIsCloudActive] = useState(false);
   const [selectedSeasonId, setSelectedSeasonId] = useState('');
   const [aiInsight, setAiInsight] = useState<string>('');
   const [loadingAi, setLoadingAi] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
+  // Busca dados automaticamente ao carregar
   const fetchData = async () => {
     setIsLoading(true);
-    const cloudEnabled = db.isCloudEnabled();
-    setIsCloudActive(cloudEnabled);
 
     try {
       const [cloudPlayers, cloudSeasons, cloudStats] = await Promise.all([
@@ -44,11 +42,10 @@ const App: React.FC = () => {
         setSeasons(cloudSeasons);
         setStats(cloudStats);
 
-        // Seleciona automaticamente a última temporada alimentada (id descendente vindo do service)
-        if (cloudSeasons.length > 0) {
+        // Seleciona automaticamente a última temporada alimentada
+        if (cloudSeasons.length > 0 && !selectedSeasonId) {
           setSelectedSeasonId(cloudSeasons[0].id);
         }
-        setIsCloudActive(true);
       }
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
@@ -74,7 +71,7 @@ const App: React.FC = () => {
   };
 
   const handleResetData = async () => {
-    if (window.confirm("Isso apagará permanentemente todos os dados do banco de dados oficial.")) {
+    if (window.confirm("ATENÇÃO: Isso apagará TODOS os dados do banco de dados na nuvem. Continuar?")) {
       setIsLoading(true);
       await db.clearDatabase();
       window.location.reload();
@@ -99,19 +96,25 @@ const App: React.FC = () => {
       .sort((a, b) => b.kd - a.kd);
   }, [stats, selectedSeasonId, players]);
 
+  // Admin Actions Handlers
   const handleAddPlayer = (nick: string) => setPlayers(prev => [...prev, { id: `p${Date.now()}`, nick }]);
+  
   const handleDeletePlayer = (id: string) => {
     setPlayers(prev => prev.filter(p => p.id !== id));
     setStats(prev => prev.filter(s => s.playerId !== id));
   };
+  
   const handleAddSeason = (name: string) => {
     const id = `s${Date.now()}`;
-    setSeasons(prev => [{ id, name }, ...prev]); // Adiciona no topo
+    setSeasons(prev => [{ id, name }, ...prev]); 
     if (!selectedSeasonId) setSelectedSeasonId(id);
   };
+  
   const handleDeleteSeason = (id: string) => {
     setSeasons(prev => prev.filter(s => s.id !== id));
     setStats(prev => prev.filter(s => s.seasonId !== id));
+    if(selectedSeasonId === id && seasons.length > 1) setSelectedSeasonId(seasons[1].id);
+    else if(selectedSeasonId === id) setSelectedSeasonId('');
   };
 
   const handleUpdateStats = (entry: Omit<PlayerStats, 'id'>) => {
@@ -142,9 +145,9 @@ const App: React.FC = () => {
         db.saveSeasons(seasons),
         db.updateStats(stats)
       ]);
-      alert("✅ Banco de Dados Cloud atualizado!");
+      alert("✅ Dados sincronizados com o Banco de Dados!");
     } catch (e) {
-      alert("❌ Erro ao publicar.");
+      alert("❌ Falha ao publicar. Verifique o console.");
     } finally {
       setIsLoading(false);
     }
@@ -159,11 +162,11 @@ const App: React.FC = () => {
     setLoadingAi(false);
   };
 
-  if (isLoading && view === 'ranking') {
+  if (isLoading && view === 'ranking' && players.length === 0) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 font-gaming">
         <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-sm tracking-widest uppercase opacity-50">Sincronizando com Supabase...</p>
+        <p className="text-sm tracking-widest uppercase opacity-50">Carregando X5 Ranking...</p>
       </div>
     );
   }
@@ -179,7 +182,7 @@ const App: React.FC = () => {
                 RANKING AMIGOS
               </h1>
               <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
-                {isCloudActive ? '• Banco de Dados Online' : '• Aguardando Conexão'}
+                Estatísticas em Tempo Real
               </span>
             </div>
           </div>
@@ -187,7 +190,7 @@ const App: React.FC = () => {
           <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
             <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'ranking' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
             <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'admin' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>
-            <button onClick={fetchData} className="p-2 text-slate-500 hover:text-emerald-400" title="Recarregar">
+            <button onClick={fetchData} className="p-2 text-slate-500 hover:text-emerald-400" title="Atualizar Dados">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
             </button>
           </nav>
@@ -199,7 +202,7 @@ const App: React.FC = () => {
           <div className="space-y-8 animate-in fade-in duration-500">
              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="w-full md:w-auto">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Selecione a Season</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Selecione a Temporada</label>
                   <select 
                     value={selectedSeasonId} 
                     onChange={(e) => setSelectedSeasonId(e.target.value)} 
@@ -215,7 +218,7 @@ const App: React.FC = () => {
              </div>
 
              {aiInsight && (
-               <div className="bg-slate-900 border border-emerald-500/20 p-6 rounded-2xl shadow-2xl">
+               <div className="bg-slate-900 border border-emerald-500/20 p-6 rounded-2xl shadow-2xl animate-in slide-in-from-top-4">
                  <h3 className="text-emerald-400 font-bold mb-2">✨ Insight da IA</h3>
                  <div className="text-slate-300 italic whitespace-pre-wrap">{aiInsight}</div>
                  <button onClick={() => setAiInsight('')} className="mt-4 text-[10px] text-slate-500 uppercase hover:text-slate-300 underline">Fechar</button>
@@ -240,7 +243,7 @@ const App: React.FC = () => {
                    </div>
                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center items-center text-center shadow-xl">
                       <div className="mb-6">
-                        <p className="text-slate-500 uppercase text-xs font-bold mb-1">Kills da Season</p>
+                        <p className="text-slate-500 uppercase text-xs font-bold mb-1">Kills</p>
                         <p className="text-5xl font-gaming font-bold text-emerald-400">
                           {currentRanking.reduce((acc, curr) => acc + curr.kills, 0)}
                         </p>
@@ -259,7 +262,7 @@ const App: React.FC = () => {
              ) : (
                <div className="text-center py-32 bg-slate-900/30 border border-slate-800 rounded-3xl border-dashed">
                  <p className="text-slate-500 text-lg italic">
-                    {selectedSeasonId ? 'Sem dados para esta season.' : 'Selecione uma temporada para carregar o ranking.'}
+                    {players.length === 0 ? 'Conectando ao banco de dados...' : 'Sem dados para esta temporada.'}
                  </p>
                </div>
              )}
@@ -272,7 +275,7 @@ const App: React.FC = () => {
                 type="password" 
                 value={adminPasswordInput} 
                 onChange={(e) => {setAdminPasswordInput(e.target.value); setLoginError(false);}} 
-                placeholder="Insira a Senha master" 
+                placeholder="Senha de Acesso" 
                 className={`w-full bg-slate-800 border ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-xl px-4 py-4 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all`}
                 autoFocus 
               />
@@ -293,7 +296,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 Friends Ranking &bull; Powered by Supabase & Gemini
+          X5 Friends Ranking &bull; Dados em Nuvem
         </p>
       </footer>
     </div>

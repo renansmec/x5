@@ -1,19 +1,42 @@
 
 import { Player, Season, PlayerStats } from '../types';
 
-// As chaves devem vir preferencialmente do ambiente (process.env)
-// Isso permite que o ranking funcione automaticamente no deploy.
+// ==================================================================================
+// CONFIGURAÇÃO AUTOMÁTICA DE CONEXÃO
+// Se você não usa variáveis de ambiente (.env), cole suas chaves do Supabase abaixo.
+// Isso garantirá que o ranking apareça automaticamente para todos os visitantes.
+// ==================================================================================
+const HARDCODED_SUPABASE_URL = ""; 
+const HARDCODED_SUPABASE_ANON_KEY = "";
+// ==================================================================================
+
+const getSafeEnv = (key: string): string => {
+  try {
+    // Verifica prefixos comuns de bundlers (Vite, CRA, Next.js)
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env[key] || 
+             process.env[`VITE_${key}`] || 
+             process.env[`REACT_APP_${key}`] || 
+             process.env[`NEXT_PUBLIC_${key}`] || '';
+    }
+  } catch (e) {
+    // Ignora erro se process não existir
+  }
+  return '';
+};
+
 const getKeys = () => {
-  return {
-    url: process.env.SUPABASE_URL || localStorage.getItem('supabase_url') || '',
-    anonKey: process.env.SUPABASE_ANON_KEY || localStorage.getItem('supabase_anon_key') || '',
-  };
+  // Prioridade: Hardcoded > Ambiente > LocalStorage
+  const url = HARDCODED_SUPABASE_URL || getSafeEnv('SUPABASE_URL') || localStorage.getItem('supabase_url') || '';
+  const anonKey = HARDCODED_SUPABASE_ANON_KEY || getSafeEnv('SUPABASE_ANON_KEY') || localStorage.getItem('supabase_anon_key') || '';
+  return { url, anonKey };
 };
 
 async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: any, query: string = '') {
   const { url: baseUrl, anonKey } = getKeys();
   
   if (!baseUrl || !anonKey) {
+    console.warn(`Supabase credentials missing for ${table}. Configure HARDCODED constants in databaseService.ts or .env files.`);
     return null;
   }
 
@@ -33,6 +56,7 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
     });
 
     if (!response.ok) {
+      console.error(`Supabase Error (${response.status}):`, await response.text());
       return null;
     }
 
@@ -40,6 +64,7 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
     const data = await response.json();
     return data || [];
   } catch (err) {
+    console.error("Network Error:", err);
     return null;
   }
 }
@@ -65,7 +90,6 @@ export const db = {
   },
 
   async getSeasons(): Promise<Season[] | null> {
-    // Busca temporadas ordenadas para pegar a última mais facilmente
     return await supabaseFetch('seasons', 'GET', null, '?select=*&order=id.desc');
   },
 

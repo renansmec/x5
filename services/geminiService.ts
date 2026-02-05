@@ -2,8 +2,23 @@
 import { GoogleGenAI } from "@google/genai";
 import { FullRankingEntry } from "../types";
 
+const getApiKey = () => {
+  try {
+    if (typeof process !== 'undefined' && process.env) {
+      return process.env.API_KEY || process.env.VITE_API_KEY || process.env.REACT_APP_API_KEY || "";
+    }
+  } catch(e) {}
+  return "";
+};
+
 export const getRankingInsights = async (ranking: FullRankingEntry[], seasonName: string): Promise<string> => {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  const apiKey = getApiKey();
+  
+  if (!apiKey) {
+    return "Configuração de API Key do Gemini ausente.";
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   
   const rankingSummary = ranking.map(r => 
     `${r.nick}: KD ${r.kd.toFixed(2)}, Dano ${r.damage}, Assistências ${r.assists}`
