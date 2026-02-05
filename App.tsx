@@ -220,7 +220,7 @@ const App: React.FC = () => {
                       Analisando...
                     </span>
                   ) : (
-                    <>✨ Análise por IA</>
+                    <></>
                   )}
                 </button>
               </div>
@@ -345,7 +345,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="mt-20 border-t border-slate-800 py-10 text-center text-slate-500 text-sm">
-        <p>© 2026 X5 dos Amigos </p>
+        <p>© 2024 X5 dos Amigos </p>
       </footer>
     </div>
   );
