@@ -1,8 +1,8 @@
 
 import { Player, Season, PlayerStats } from '../types';
 
-// O desenvolvedor deve garantir que SUPABASE_URL e SUPABASE_ANON_KEY 
-// estejam configurados no ambiente de deploy (Vercel, Netlify, etc.)
+// As chaves devem vir preferencialmente do ambiente (process.env)
+// Isso permite que o ranking funcione automaticamente no deploy.
 const getKeys = () => {
   return {
     url: process.env.SUPABASE_URL || localStorage.getItem('supabase_url') || '',
@@ -14,7 +14,6 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
   const { url: baseUrl, anonKey } = getKeys();
   
   if (!baseUrl || !anonKey) {
-    console.error(`Configuração do Supabase ausente para a tabela: ${table}`);
     return null;
   }
 
@@ -34,8 +33,6 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`Supabase API Error [${table}]:`, errorText);
       return null;
     }
 
@@ -43,7 +40,6 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
     const data = await response.json();
     return data || [];
   } catch (err) {
-    console.error(`Erro crítico de rede ao acessar ${table}:`, err);
     return null;
   }
 }
@@ -65,41 +61,36 @@ export const db = {
   },
 
   async getPlayers(): Promise<Player[] | null> {
-    return await supabaseFetch('players?select=*');
+    return await supabaseFetch('players', 'GET', null, '?select=*');
   },
 
   async getSeasons(): Promise<Season[] | null> {
-    return await supabaseFetch('seasons?select=*');
+    // Busca temporadas ordenadas para pegar a última mais facilmente
+    return await supabaseFetch('seasons', 'GET', null, '?select=*&order=id.desc');
   },
 
   async getStats(): Promise<PlayerStats[] | null> {
-    return await supabaseFetch('stats?select=*');
+    return await supabaseFetch('stats', 'GET', null, '?select=*');
   },
 
   async savePlayers(players: Player[]): Promise<void> {
     if (this.isCloudEnabled()) {
       await supabaseFetch('players', 'DELETE', null, '?select=*');
-      if (players.length > 0) {
-        await supabaseFetch('players', 'POST', players);
-      }
+      if (players.length > 0) await supabaseFetch('players', 'POST', players);
     }
   },
 
   async saveSeasons(seasons: Season[]): Promise<void> {
     if (this.isCloudEnabled()) {
       await supabaseFetch('seasons', 'DELETE', null, '?select=*');
-      if (seasons.length > 0) {
-        await supabaseFetch('seasons', 'POST', seasons);
-      }
+      if (seasons.length > 0) await supabaseFetch('seasons', 'POST', seasons);
     }
   },
 
   async updateStats(allStats: PlayerStats[]): Promise<void> {
     if (this.isCloudEnabled()) {
       await supabaseFetch('stats', 'DELETE', null, '?select=*');
-      if (allStats.length > 0) {
-        await supabaseFetch('stats', 'POST', allStats);
-      }
+      if (allStats.length > 0) await supabaseFetch('stats', 'POST', allStats);
     }
   },
 
