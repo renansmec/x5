@@ -1,6 +1,8 @@
 
 import { Player, Season, PlayerStats } from '../types';
 
+// O desenvolvedor deve garantir que SUPABASE_URL e SUPABASE_ANON_KEY 
+// estejam configurados no ambiente de deploy (Vercel, Netlify, etc.)
 const getKeys = () => {
   return {
     url: process.env.SUPABASE_URL || localStorage.getItem('supabase_url') || '',
@@ -10,7 +12,11 @@ const getKeys = () => {
 
 async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: any, query: string = '') {
   const { url: baseUrl, anonKey } = getKeys();
-  if (!baseUrl || !anonKey) return null;
+  
+  if (!baseUrl || !anonKey) {
+    console.error(`Configuração do Supabase ausente para a tabela: ${table}`);
+    return null;
+  }
 
   const url = `${baseUrl}/rest/v1/${table}${query}`;
   const headers: HeadersInit = {
@@ -29,7 +35,7 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Supabase Error [${table}]:`, errorText);
+      console.error(`Supabase API Error [${table}]:`, errorText);
       return null;
     }
 
@@ -37,7 +43,7 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
     const data = await response.json();
     return data || [];
   } catch (err) {
-    console.warn(`Erro de conexão com Supabase em ${table}.`);
+    console.error(`Erro crítico de rede ao acessar ${table}:`, err);
     return null;
   }
 }
@@ -59,15 +65,15 @@ export const db = {
   },
 
   async getPlayers(): Promise<Player[] | null> {
-    return await supabaseFetch('players');
+    return await supabaseFetch('players?select=*');
   },
 
   async getSeasons(): Promise<Season[] | null> {
-    return await supabaseFetch('seasons');
+    return await supabaseFetch('seasons?select=*');
   },
 
   async getStats(): Promise<PlayerStats[] | null> {
-    return await supabaseFetch('stats');
+    return await supabaseFetch('stats?select=*');
   },
 
   async savePlayers(players: Player[]): Promise<void> {
