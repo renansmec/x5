@@ -16,6 +16,7 @@ const App: React.FC = () => {
   });
   
   const [isLoading, setIsLoading] = useState(true);
+  const [isCloudActive, setIsCloudActive] = useState(false);
   const [players, setPlayers] = useState<Player[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [stats, setStats] = useState<PlayerStats[]>([]);
@@ -26,44 +27,36 @@ const App: React.FC = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      setIsLoading(true);
-      try {
-        const [p, s, st] = await Promise.all([
-          db.getPlayers(),
-          db.getSeasons(),
-          db.getStats()
-        ]);
-        setPlayers(p);
-        setSeasons(s);
-        setStats(st);
-        if (s.length > 0) setSelectedSeasonId(s[0].id);
-      } catch (error) {
-        console.error("Falha ao carregar dados do Supabase:", error);
-      } finally {
-        setIsLoading(false);
+  // CARREGAMENTO INICIAL - SEMPRE BUSCA DO SUPABASE PRIMEIRO
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const [p, s, st] = await Promise.all([
+        db.getPlayers(),
+        db.getSeasons(),
+        db.getStats()
+      ]);
+      
+      setPlayers(p);
+      setSeasons(s);
+      setStats(st);
+      
+      const cloudStatus = db.isCloudEnabled();
+      setIsCloudActive(cloudStatus);
+
+      if (s.length > 0) {
+        setSelectedSeasonId(s[0].id);
       }
-    };
-    loadData();
-  }, []);
+    } catch (error) {
+      console.error("Falha ao sincronizar com banco de dados:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (!isLoading) {
-      const sync = async () => {
-        try {
-          await Promise.all([
-            db.savePlayers(players),
-            db.saveSeasons(seasons),
-            db.updateStats(stats)
-          ]);
-        } catch (e) {
-          console.error("Erro na sincronização Supabase:", e);
-        }
-      };
-      sync();
-    }
-  }, [players, seasons, stats, isLoading]);
+    loadData();
+  }, []);
 
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,49 +100,80 @@ const App: React.FC = () => {
       .sort((a, b) => b.kd - a.kd);
   }, [stats, selectedSeasonId, players]);
 
+  // Ações de Memória (Só salvam no LocalStorage até o Admin clicar em "Publicar")
   const handleAddPlayer = (nick: string) => {
     const newPlayer = { id: `p${Date.now()}`, nick };
-    setPlayers(prev => [...prev, newPlayer]);
+    const updated = [...players, newPlayer];
+    setPlayers(updated);
+    localStorage.setItem('x5_players', JSON.stringify(updated));
   };
 
   const handleDeletePlayer = (id: string) => {
-    setPlayers(prev => prev.filter(p => p.id !== id));
-    setStats(prev => prev.filter(s => s.playerId !== id));
+    const updatedPlayers = players.filter(p => p.id !== id);
+    const updatedStats = stats.filter(s => s.playerId !== id);
+    setPlayers(updatedPlayers);
+    setStats(updatedStats);
+    localStorage.setItem('x5_players', JSON.stringify(updatedPlayers));
+    localStorage.setItem('x5_stats', JSON.stringify(updatedStats));
   };
 
   const handleAddSeason = (name: string) => {
     const newSeason = { id: `s${Date.now()}`, name };
-    setSeasons(prev => [...prev, newSeason]);
+    const updated = [...seasons, newSeason];
+    setSeasons(updated);
+    localStorage.setItem('x5_seasons', JSON.stringify(updated));
     if (!selectedSeasonId) setSelectedSeasonId(newSeason.id);
   };
 
   const handleDeleteSeason = (id: string) => {
-    const updated = seasons.filter(s => s.id !== id);
-    setSeasons(updated);
-    setStats(prev => prev.filter(s => s.seasonId !== id));
+    const updatedSeasons = seasons.filter(s => s.id !== id);
+    const updatedStats = stats.filter(s => s.seasonId !== id);
+    setSeasons(updatedSeasons);
+    setStats(updatedStats);
+    localStorage.setItem('x5_seasons', JSON.stringify(updatedSeasons));
+    localStorage.setItem('x5_stats', JSON.stringify(updatedStats));
     if (selectedSeasonId === id) {
-      setSelectedSeasonId(updated.length > 0 ? updated[0].id : '');
+      setSelectedSeasonId(updatedSeasons.length > 0 ? updatedSeasons[0].id : '');
     }
   };
 
   const handleUpdateStats = (entry: Omit<PlayerStats, 'id'>) => {
-    setStats(prev => {
-      const existingIndex = prev.findIndex(s => s.playerId === entry.playerId && s.seasonId === entry.seasonId);
-      if (existingIndex > -1) {
-        const updated = [...prev];
-        const current = updated[existingIndex];
-        updated[existingIndex] = {
-          ...current,
-          matches: current.matches + entry.matches,
-          kills: current.kills + entry.kills,
-          deaths: current.deaths + entry.deaths,
-          assists: current.assists + entry.assists,
-          damage: current.damage + entry.damage,
-        };
-        return updated;
-      }
-      return [...prev, { ...entry, id: `st${Date.now()}` }];
-    });
+    const newStats = [...stats];
+    const existingIndex = newStats.findIndex(s => s.playerId === entry.playerId && s.seasonId === entry.seasonId);
+    
+    if (existingIndex > -1) {
+      const current = newStats[existingIndex];
+      newStats[existingIndex] = {
+        ...current,
+        matches: current.matches + entry.matches,
+        kills: current.kills + entry.kills,
+        deaths: current.deaths + entry.deaths,
+        assists: current.assists + entry.assists,
+        damage: current.damage + entry.damage,
+      };
+    } else {
+      newStats.push({ ...entry, id: `st${Date.now()}` });
+    }
+    
+    setStats(newStats);
+    localStorage.setItem('x5_stats', JSON.stringify(newStats));
+  };
+
+  // FUNÇÃO PARA PUBLICAR NA NUVEM (MANUAL)
+  const handlePublishToCloud = async () => {
+    setIsLoading(true);
+    try {
+      await Promise.all([
+        db.savePlayers(players),
+        db.saveSeasons(seasons),
+        db.updateStats(stats)
+      ]);
+      alert("✅ Sincronizado com o Supabase!");
+    } catch (e) {
+      alert("❌ Erro ao sincronizar.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const generateAICommentary = async () => {
@@ -165,7 +189,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 font-gaming">
         <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-xl animate-pulse tracking-widest uppercase">Conectando Supabase...</p>
+        <p className="text-xl animate-pulse tracking-widest uppercase">Acessando Postgres Cloud...</p>
       </div>
     );
   }
@@ -174,21 +198,27 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-slate-100 pb-20">
       <header className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 shadow-xl">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg shadow-emerald-500/20">X5</div>
-            <h1 className="text-2xl font-gaming font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
-              RANKING SUPABASE
-            </h1>
+            <div>
+              <h1 className="text-xl font-gaming font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                RANKING AMIGOS
+              </h1>
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${isCloudActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-tighter">
+                  {isCloudActive ? 'Database Live' : 'Offline / Local'}
+                </span>
+              </div>
+            </div>
           </div>
           
           <nav className="flex items-center gap-4 bg-slate-800 p-1 rounded-xl border border-slate-700">
             <button onClick={() => setView('ranking')} className={`px-6 py-2 rounded-lg font-bold transition-all ${view === 'ranking' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
             <button onClick={() => setView('admin')} className={`px-6 py-2 rounded-lg font-bold transition-all ${view === 'admin' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Painel</button>
-            {isAdminAuthenticated && (
-              <button onClick={handleLogout} className="px-3 py-2 text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-              </button>
-            )}
+            <button onClick={loadData} className="p-2 text-slate-400 hover:text-emerald-400 transition-colors" title="Recarregar do Banco">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
           </nav>
         </div>
       </header>
@@ -196,6 +226,7 @@ const App: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 mt-8">
         {view === 'ranking' ? (
           <div className="space-y-8 animate-in fade-in duration-500">
+             {/* Conteúdo do Ranking permanece similar mas com dados garantidos do loadData */}
              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="w-full md:w-auto">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Temporada Ativa</label>
@@ -220,7 +251,7 @@ const App: React.FC = () => {
              {currentRanking.length > 0 ? (
                <div className="space-y-10">
                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                   <div className="lg:col-span-3 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 h-[350px] shadow-inner">
+                    <div className="lg:col-span-3 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 h-[350px] shadow-inner">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={currentRanking}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
@@ -235,7 +266,7 @@ const App: React.FC = () => {
                    </div>
                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center items-center text-center shadow-xl">
                       <div className="mb-6">
-                        <p className="text-slate-500 uppercase tracking-widest text-xs font-bold mb-1">Total Kills Cloud</p>
+                        <p className="text-slate-500 uppercase tracking-widest text-xs font-bold mb-1">Total Kills</p>
                         <p className="text-5xl font-gaming font-bold text-emerald-400">
                           {currentRanking.reduce((acc, curr) => acc + curr.kills, 0)}
                         </p>
@@ -253,7 +284,8 @@ const App: React.FC = () => {
                </div>
              ) : (
                <div className="text-center py-20 bg-slate-900/30 border border-slate-800 rounded-3xl border-dashed">
-                 <p className="text-slate-500 text-lg italic">Nenhum dado encontrado no Supabase para esta temporada.</p>
+                 <p className="text-slate-500 text-lg italic">Aguardando dados da nuvem...</p>
+                 <button onClick={loadData} className="mt-4 text-emerald-500 font-bold hover:underline">Tentar Reconectar</button>
                </div>
              )}
           </div>
@@ -269,7 +301,7 @@ const App: React.FC = () => {
                 className={`w-full bg-slate-800 border ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-xl px-4 py-4 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all`}
                 autoFocus 
               />
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Acessar Banco Postgres</button>
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-bold shadow-lg shadow-emerald-500/20 active:scale-95 transition-all">Verificar Identidade</button>
             </form>
           </div>
         ) : (
@@ -279,22 +311,15 @@ const App: React.FC = () => {
             onAddSeason={handleAddSeason} onDeleteSeason={handleDeleteSeason}
             onUpdateStats={handleUpdateStats} onResetData={handleResetData} onSetView={setView}
             onEditPlayer={() => {}} onEditSeason={() => {}}
+            onPublish={handlePublishToCloud}
           />
         )}
       </main>
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
-        <div className="flex items-center justify-center gap-4 text-[10px] font-bold uppercase tracking-widest">
-           <div className="flex items-center gap-1.5">
-             <div className={`w-2 h-2 rounded-full ${db.isCloudEnabled() ? 'bg-emerald-500 animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-slate-600'}`}></div>
-             <span className={db.isCloudEnabled() ? 'text-emerald-400' : 'text-slate-500'}>Supabase Postgres</span>
-           </div>
-           <div className="w-px h-3 bg-slate-700"></div>
-           <div className="flex items-center gap-1.5">
-             <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-             <span className="text-blue-400">Local Cache Active</span>
-           </div>
-        </div>
+        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
+          Sincronizado via Supabase PostgreSQL & Google Gemini
+        </p>
       </footer>
     </div>
   );

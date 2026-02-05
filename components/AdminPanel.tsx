@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Player, Season, PlayerStats, ViewType } from '../types';
 import { db } from '../services/databaseService';
 
@@ -16,13 +16,14 @@ interface AdminPanelProps {
   onUpdateStats: (entry: Omit<PlayerStats, 'id'>) => void;
   onResetData: () => void;
   onSetView: (view: ViewType) => void;
+  onPublish: () => void; // Nova prop para salvar na nuvem
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   players, seasons, stats,
   onAddPlayer, onDeletePlayer,
   onAddSeason, onDeleteSeason,
-  onUpdateStats, onResetData, onSetView
+  onUpdateStats, onResetData, onSetView, onPublish
 }) => {
   const [newPlayerNick, setNewPlayerNick] = useState('');
   const [newSeasonName, setNewSeasonName] = useState('');
@@ -58,8 +59,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
   const saveManualConfig = () => {
     if (manualUrl && manualKey) {
-      db.setCloudKeys(manualUrl, manualKey);
-      window.location.reload(); // Recarrega para aplicar as chaves globalmente
+      db.setCloudKeys(manualUrl.trim(), manualKey.trim());
+      window.location.reload();
     }
   };
 
@@ -87,7 +88,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
 
         {showConfig && (
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300 border-t border-slate-800 pt-4 mt-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <label className="text-[10px] text-slate-500 font-bold ml-1 uppercase">Supabase URL</label>
@@ -96,7 +97,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   value={manualUrl} 
                   onChange={(e) => setManualUrl(e.target.value)}
                   placeholder="https://xyz.supabase.co" 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 text-slate-300"
                 />
               </div>
               <div className="space-y-1">
@@ -106,7 +107,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   value={manualKey} 
                   onChange={(e) => setManualKey(e.target.value)}
                   placeholder="eyJhbGciOiJIUzI1NiI..." 
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500"
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500 text-slate-300"
                 />
               </div>
             </div>
@@ -115,25 +116,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 onClick={saveManualConfig}
                 className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold py-2 rounded-lg transition-all"
               >
-                SALVAR E CONECTAR
+                SALVAR CHAVES NESTE NAVEGADOR
               </button>
               {isConnected && (
                 <button 
                   onClick={clearManualConfig}
                   className="bg-rose-900/30 hover:bg-rose-900/50 text-rose-500 text-[10px] font-bold px-4 py-2 rounded-lg transition-all border border-rose-900/30"
                 >
-                  LIMPAR CHAVES
+                  DESCONECTAR
                 </button>
               )}
             </div>
-            {!isConnected && (
-              <p className="text-[10px] text-slate-500 italic text-center">
-                * Cole as chaves acima para transformar o ranking em "Global". Seus amigos verão os mesmos dados.
-              </p>
-            )}
           </div>
         )}
       </div>
+
+      {/* BOTÃO DE PUBLICAÇÃO GLOBAL */}
+      {isConnected && (
+        <div className="bg-emerald-600/10 border border-emerald-500/20 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+           <div>
+             <h4 className="text-emerald-400 font-bold">Sincronização Cloud</h4>
+             <p className="text-xs text-slate-400">Clique para enviar as alterações locais para todos os usuários.</p>
+           </div>
+           <button onClick={onPublish} className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2">
+             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+             PUBLICAR MUDANÇAS
+           </button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div className="space-y-8">
@@ -143,7 +153,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               Gerenciar Jogadores
             </h3>
             <div className="flex gap-2 mb-6">
-              <input type="text" value={newPlayerNick} onChange={(e) => setNewPlayerNick(e.target.value)} placeholder="Nick do player..." className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-blue-500 transition-all" />
+              <input type="text" value={newPlayerNick} onChange={(e) => setNewPlayerNick(e.target.value)} placeholder="Nick do player..." className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-blue-500 transition-all text-slate-100" />
               <button onClick={() => { if(newPlayerNick) { onAddPlayer(newPlayerNick); setNewPlayerNick(''); } }} className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20">Add</button>
             </div>
             <div className="max-h-56 overflow-y-auto space-y-2 custom-scrollbar pr-2">
@@ -164,7 +174,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               Gerenciar Temporadas
             </h3>
             <div className="flex gap-2 mb-6">
-              <input type="text" value={newSeasonName} onChange={(e) => setNewSeasonName(e.target.value)} placeholder="Nome da Season..." className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-purple-500 transition-all" />
+              <input type="text" value={newSeasonName} onChange={(e) => setNewSeasonName(e.target.value)} placeholder="Nome da Season..." className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-purple-500 transition-all text-slate-100" />
               <button onClick={() => { if(newSeasonName) { onAddSeason(newSeasonName); setNewSeasonName(''); } }} className="bg-purple-600 hover:bg-purple-500 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-purple-500/20">Criar</button>
             </div>
             <div className="max-h-56 overflow-y-auto space-y-2 custom-scrollbar pr-2">
@@ -187,12 +197,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-2xl">
                   <svg className="w-12 h-12 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                 </div>
-                <h4 className="text-2xl font-bold text-white mb-2">Sucesso!</h4>
-                <p className="text-emerald-100 mb-8 opacity-80 text-sm">Dados sincronizados com o PostgreSQL.</p>
-                <div className="flex gap-4">
-                  <button onClick={() => setSaveSuccess(false)} className="bg-emerald-800 hover:bg-emerald-900 text-white px-8 py-3 rounded-xl font-bold transition-all">Novo Registro</button>
-                  <button onClick={() => onSetView('ranking')} className="bg-white text-emerald-950 px-8 py-3 rounded-xl font-bold hover:bg-slate-100 transition-all">Ver Ranking</button>
-                </div>
+                <h4 className="text-2xl font-bold text-white mb-2">Registrado!</h4>
+                <p className="text-emerald-100 mb-8 opacity-80 text-sm text-center">Agora clique em "Publicar Mudanças" <br/> para enviar para a nuvem.</p>
+                <button onClick={() => setSaveSuccess(false)} className="bg-emerald-800 hover:bg-emerald-900 text-white px-8 py-3 rounded-xl font-bold transition-all">Novo Registro</button>
               </div>
             )}
             
@@ -245,29 +252,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   </div>
                </div>
 
-               <button type="submit" disabled={isSaving || !selectedPlayerId || !selectedSeasonId} className="w-full bg-emerald-600 hover:bg-emerald-500 py-6 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-emerald-600/20 disabled:opacity-30">
+               <button type="submit" disabled={isSaving || !selectedPlayerId || !selectedSeasonId} className="w-full bg-blue-600 hover:bg-blue-500 py-6 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-blue-600/20 disabled:opacity-30">
                   {isSaving ? (
                     <div className="w-7 h-7 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
                   ) : (
                     <>
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                      {isConnected ? 'Transmitir p/ Cloud' : 'Salvar Localmente'}
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      Adicionar ao Ranking Local
                     </>
                   )}
                </button>
             </form>
 
             <div className="mt-12 pt-8 border-t border-slate-700/50 flex flex-col gap-4">
-              <button onClick={onResetData} className="w-full bg-rose-950/20 hover:bg-rose-950/40 text-rose-500 border border-rose-900/30 py-4 rounded-xl font-bold transition-all text-xs uppercase tracking-widest">Zerar Banco Postgres (Wipe)</button>
+              <button onClick={onResetData} className="w-full bg-rose-950/20 hover:bg-rose-950/40 text-rose-500 border border-rose-900/30 py-4 rounded-xl font-bold transition-all text-xs uppercase tracking-widest">Wipe (Resetar Tudo)</button>
             </div>
           </section>
         </div>
       </div>
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
-      `}</style>
     </div>
   );
 };
