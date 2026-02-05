@@ -2,45 +2,71 @@
 import { Player, Season, PlayerStats } from '../types';
 
 // ==================================================================================
-// CONFIGURAÇÃO AUTOMÁTICA DE CONEXÃO
-// Se você não usa variáveis de ambiente (.env), cole suas chaves do Supabase abaixo.
-// Isso garantirá que o ranking apareça automaticamente para todos os visitantes.
+// 🚨 ÁREA DE CONFIGURAÇÃO OBRIGATÓRIA PARA ACESSO PÚBLICO 🚨
+// Para que o ranking apareça para todos SEM pedir senha, cole suas chaves abaixo.
 // ==================================================================================
-const HARDCODED_SUPABASE_URL = ""; 
-const HARDCODED_SUPABASE_ANON_KEY = "";
+const HARDCODED_SUPABASE_URL = "https://seiwinqvzsfwupnvrygf.supabase.co"; 
+const HARDCODED_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlaXdpbnF2enNmd3VwbnZyeWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNTY1MDAsImV4cCI6MjA4NTgzMjUwMH0.cCqNfGnGlEjQU5D0nlD3avC5slaXsBySWwdFt-zsYQk";
 // ==================================================================================
 
-const getSafeEnv = (key: string): string => {
+const getEnvVar = (key: string): string => {
   try {
-    // Verifica prefixos comuns de bundlers (Vite, CRA, Next.js)
+    // Tenta pegar de variáveis de ambiente modernas (Vite)
+    // @ts-ignore
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      // @ts-ignore
+      return import.meta.env[`VITE_${key}`] || import.meta.env[key] || '';
+    }
+  } catch (e) {}
+
+  try {
+    // Tenta pegar de variáveis de ambiente legadas (Process/Node)
     if (typeof process !== 'undefined' && process.env) {
       return process.env[key] || 
              process.env[`VITE_${key}`] || 
              process.env[`REACT_APP_${key}`] || 
              process.env[`NEXT_PUBLIC_${key}`] || '';
     }
-  } catch (e) {
-    // Ignora erro se process não existir
-  }
+  } catch (e) {}
+
   return '';
 };
 
 const getKeys = () => {
-  // Prioridade: Hardcoded > Ambiente > LocalStorage
-  const url = HARDCODED_SUPABASE_URL || getSafeEnv('HARDCODED_SUPABASE_URL') || localStorage.getItem('https://seiwinqvzsfwupnvrygf.supabase.co') || '';
-  const anonKey = HARDCODED_SUPABASE_ANON_KEY || getSafeEnv('SUPABASE_ANON_KEY') || localStorage.getItem('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlaXdpbnF2enNmd3VwbnZyeWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNTY1MDAsImV4cCI6MjA4NTgzMjUwMH0.cCqNfGnGlEjQU5D0nlD3avC5slaXsBySWwdFt-zsYQk') || '';
-  return { url, anonKey };
+  // 1. Prioridade: Chaves coladas diretamente no código (para visitantes verem)
+  if (HARDCODED_SUPABASE_URL && HARDCODED_SUPABASE_ANON_KEY) {
+    return { url: HARDCODED_SUPABASE_URL, anonKey: HARDCODED_SUPABASE_ANON_KEY };
+  }
+
+  // 2. Prioridade: Variáveis de Ambiente (.env)
+  const envUrl = getEnvVar('SUPABASE_URL');
+  const envKey = getEnvVar('SUPABASE_ANON_KEY');
+  if (envUrl && envKey) {
+    return { url: envUrl, anonKey: envKey };
+  }
+
+  // 3. Prioridade: LocalStorage (Configurado via Painel Admin)
+  const localUrl = localStorage.getItem('supabase_url');
+  const localKey = localStorage.getItem('supabase_anon_key');
+  if (localUrl && localKey) {
+    return { url: localUrl, anonKey: localKey };
+  }
+
+  return { url: '', anonKey: '' };
 };
 
 async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: any, query: string = '') {
   const { url: baseUrl, anonKey } = getKeys();
   
   if (!baseUrl || !anonKey) {
-    console.warn(`Supabase credentials missing for ${table}. Configure HARDCODED constants in databaseService.ts or .env files.`);
+    console.warn(`[Supabase] Credenciais não encontradas para a tabela ${table}.`);
     return null;
   }
 
-  const url = `${baseUrl}/rest/v1/${table}${query}`;
+  // Remove barra final da URL se houver
+  const cleanUrl = baseUrl.replace(/\/$/, "");
+  const endpoint = `${cleanUrl}/rest/v1/${table}${query}`;
+
   const headers: HeadersInit = {
     'apikey': anonKey,
     'Authorization': `Bearer ${anonKey}`,
@@ -49,22 +75,31 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
   };
 
   try {
-    const response = await fetch(url, {
+    const response = await fetch(endpoint, {
       method,
       headers,
       body: body ? JSON.stringify(body) : undefined,
     });
 
     if (!response.ok) {
-      console.error(`Supabase Error (${response.status}):`, await response.text());
+      const text = await response.text();
+      console.error(`[Supabase Error] ${response.status} em ${table}:`, text);
       return null;
     }
 
     if (method === 'DELETE') return true;
-    const data = await response.json();
-    return data || [];
+    
+    // Tenta fazer parse do JSON com segurança
+    try {
+      const data = await response.json();
+      return data || [];
+    } catch (e) {
+      // Se não tiver corpo de resposta (ex: 204 No Content), retorna sucesso vazio
+      return [];
+    }
+
   } catch (err) {
-    console.error("Network Error:", err);
+    console.error(`[Network Error] Falha ao conectar em ${table}:`, err);
     return null;
   }
 }
