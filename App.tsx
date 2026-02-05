@@ -189,7 +189,7 @@ const App: React.FC = () => {
         </div>
       </header>
 
-      <!-- <main className="max-w-7xl mx-auto px-6 mt-8">
+      <main className="max-w-7xl mx-auto px-6 mt-8">
         {view === 'ranking' ? (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -263,7 +263,7 @@ const App: React.FC = () => {
                         </BarChart>
                       </ResponsiveContainer>
                     </div>
-                </div> -->
+                </div>
 
                 <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 flex flex-col justify-center text-center">
                     <div className="mb-4">
