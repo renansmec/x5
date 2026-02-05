@@ -1,5 +1,5 @@
 {
-  "name": "X5 Friends Ranking & Stats",
-  "description": "Uma plataforma completa para gerenciar e visualizar estatísticas de jogadores em partidas X5, com suporte a múltiplas temporadas, rankings dinâmicos e análises geradas por IA.",
+  "name": "X5 Friends Pro Ranking",
+  "description": "Uma plataforma profissional para gerenciar rankings de X5 (5v5) entre amigos, com estatísticas detalhadas por temporada, registro de partidas e análise de desempenho alimentada por IA.",
   "requestFramePermissions": []
 }

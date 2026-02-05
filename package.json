@@ -1,5 +1,5 @@
 {
-  "name": "x5-friends-ranking-&-stats",
+  "name": "x5-friends-pro-ranking",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.2.4",
     "react-dom": "^19.2.4",
-    "@google/genai": "^1.39.0",
-    "recharts": "^3.7.0"
+    "react": "^19.2.4",
+    "@google/genai": "^1.40.0",
+    "@supabase/supabase-js": "^2.48.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
