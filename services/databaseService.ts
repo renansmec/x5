@@ -2,25 +2,21 @@
 import { Player, Season, PlayerStats } from '../types';
 import { INITIAL_PLAYERS, INITIAL_SEASONS, INITIAL_STATS } from '../constants';
 
-/**
- * CONFIGURAÇÃO SUPABASE (POSTGRES)
- * Adicione estas variáveis no Vercel:
- * SUPABASE_URL: Ex: https://xyz.supabase.co
- * SUPABASE_ANON_KEY: Sua chave anon/public
- */
-
-const CONFIG = {
-  url: process.env.SUPABASE_URL || '',
-  anonKey: process.env.SUPABASE_ANON_KEY || '',
+const getKeys = () => {
+  return {
+    url: process.env.SUPABASE_URL || localStorage.getItem('supabase_url') || '',
+    anonKey: process.env.SUPABASE_ANON_KEY || localStorage.getItem('supabase_anon_key') || '',
+  };
 };
 
 async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: any, query: string = '') {
-  if (!CONFIG.url || !CONFIG.anonKey) return null;
+  const { url: baseUrl, anonKey } = getKeys();
+  if (!baseUrl || !anonKey) return null;
 
-  const url = `${CONFIG.url}/rest/v1/${table}${query}`;
+  const url = `${baseUrl}/rest/v1/${table}${query}`;
   const headers: HeadersInit = {
-    'apikey': CONFIG.anonKey,
-    'Authorization': `Bearer ${CONFIG.anonKey}`,
+    'apikey': anonKey,
+    'Authorization': `Bearer ${anonKey}`,
     'Content-Type': 'application/json',
     'Prefer': method === 'POST' ? 'return=representation' : '',
   };
@@ -40,13 +36,26 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
     if (method === 'DELETE') return true;
     return await response.json();
   } catch (err) {
-    console.warn(`Supabase falhou em ${table}. Usando fallback local.`);
+    console.warn(`Supabase falhou em ${table}. Verifique a URL e a conexão.`);
     return null;
   }
 }
 
 export const db = {
-  isCloudEnabled: () => !!CONFIG.url && !!CONFIG.anonKey,
+  isCloudEnabled: () => {
+    const { url, anonKey } = getKeys();
+    return !!url && !!anonKey;
+  },
+
+  setCloudKeys: (url: string, key: string) => {
+    localStorage.setItem('supabase_url', url);
+    localStorage.setItem('supabase_anon_key', key);
+  },
+
+  clearCloudKeys: () => {
+    localStorage.removeItem('supabase_url');
+    localStorage.removeItem('supabase_anon_key');
+  },
 
   async getPlayers(): Promise<Player[]> {
     const data = await supabaseFetch('players');

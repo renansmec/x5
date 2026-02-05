@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Player, Season, PlayerStats, ViewType } from '../types';
 import { db } from '../services/databaseService';
 
@@ -33,6 +33,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
+  // Estados para configuração manual
+  const [manualUrl, setManualUrl] = useState(localStorage.getItem('supabase_url') || '');
+  const [manualKey, setManualKey] = useState(localStorage.getItem('supabase_anon_key') || '');
+  const [showConfig, setShowConfig] = useState(!db.isCloudEnabled());
+
   const handleUpdateStats = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPlayerId || !selectedSeasonId) return;
@@ -51,33 +56,81 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setTimeout(() => setSaveSuccess(false), 3500);
   };
 
-  const checkEnv = (key: string) => !!(process.env as any)[key];
+  const saveManualConfig = () => {
+    if (manualUrl && manualKey) {
+      db.setCloudKeys(manualUrl, manualKey);
+      window.location.reload(); // Recarrega para aplicar as chaves globalmente
+    }
+  };
+
+  const clearManualConfig = () => {
+    db.clearCloudKeys();
+    setManualUrl('');
+    setManualKey('');
+    window.location.reload();
+  };
+
+  const isConnected = db.isCloudEnabled();
 
   return (
     <div className="space-y-8 animate-in slide-in-from-right-8 duration-500">
+      {/* SEÇÃO DE DIAGNÓSTICO E CONFIGURAÇÃO */}
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl">
-        <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-          Status de Conexão Supabase (Postgres)
-        </h3>
-        <div className="grid grid-cols-2 gap-4">
-          {[
-            { label: 'Supabase URL', key: 'SUPABASE_URL' },
-            { label: 'Anon Key', key: 'SUPABASE_ANON_KEY' }
-          ].map(item => (
-            <div key={item.key} className={`p-3 rounded-xl border flex flex-col items-center justify-center text-center gap-1 ${checkEnv(item.key) ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-rose-500/5 border-rose-500/20'}`}>
-               <span className="text-[9px] font-bold text-slate-400 uppercase">{item.label}</span>
-               <span className={`text-[10px] font-bold ${checkEnv(item.key) ? 'text-emerald-400' : 'text-rose-400'}`}>
-                 {checkEnv(item.key) ? 'ATIVO NO VERCEL' : 'NÃO CONFIGURADO'}
-               </span>
-            </div>
-          ))}
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+            <svg className={`w-4 h-4 ${isConnected ? 'text-emerald-500' : 'text-rose-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            Status da Nuvem: {isConnected ? <span className="text-emerald-500">Conectado</span> : <span className="text-rose-500">Local Only</span>}
+          </h3>
+          <button onClick={() => setShowConfig(!showConfig)} className="text-xs text-blue-400 hover:underline">
+            {showConfig ? 'Ocultar Config' : 'Ajustar Conexão'}
+          </button>
         </div>
-        {!db.isCloudEnabled() && (
-          <div className="mt-4 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
-            <p className="text-[11px] text-amber-500 leading-relaxed">
-              <b>Dica de Setup:</b> Para salvar na nuvem, crie um projeto no Supabase, crie as tabelas (players, seasons, stats) e adicione as chaves <b>SUPABASE_URL</b> e <b>SUPABASE_ANON_KEY</b> no painel do Vercel.
-            </p>
+
+        {showConfig && (
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[10px] text-slate-500 font-bold ml-1 uppercase">Supabase URL</label>
+                <input 
+                  type="text" 
+                  value={manualUrl} 
+                  onChange={(e) => setManualUrl(e.target.value)}
+                  placeholder="https://xyz.supabase.co" 
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] text-slate-500 font-bold ml-1 uppercase">Anon Key</label>
+                <input 
+                  type="password" 
+                  value={manualKey} 
+                  onChange={(e) => setManualKey(e.target.value)}
+                  placeholder="eyJhbGciOiJIUzI1NiI..." 
+                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button 
+                onClick={saveManualConfig}
+                className="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold py-2 rounded-lg transition-all"
+              >
+                SALVAR E CONECTAR
+              </button>
+              {isConnected && (
+                <button 
+                  onClick={clearManualConfig}
+                  className="bg-rose-900/30 hover:bg-rose-900/50 text-rose-500 text-[10px] font-bold px-4 py-2 rounded-lg transition-all border border-rose-900/30"
+                >
+                  LIMPAR CHAVES
+                </button>
+              )}
+            </div>
+            {!isConnected && (
+              <p className="text-[10px] text-slate-500 italic text-center">
+                * Cole as chaves acima para transformar o ranking em "Global". Seus amigos verão os mesmos dados.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -134,8 +187,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-2xl">
                   <svg className="w-12 h-12 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                 </div>
-                <h4 className="text-2xl font-bold text-white mb-2">Supabase Sync OK!</h4>
-                <p className="text-emerald-100 mb-8 opacity-80 text-sm">Dados salvos com sucesso no PostgreSQL.</p>
+                <h4 className="text-2xl font-bold text-white mb-2">Sucesso!</h4>
+                <p className="text-emerald-100 mb-8 opacity-80 text-sm">Dados sincronizados com o PostgreSQL.</p>
                 <div className="flex gap-4">
                   <button onClick={() => setSaveSuccess(false)} className="bg-emerald-800 hover:bg-emerald-900 text-white px-8 py-3 rounded-xl font-bold transition-all">Novo Registro</button>
                   <button onClick={() => onSetView('ranking')} className="bg-white text-emerald-950 px-8 py-3 rounded-xl font-bold hover:bg-slate-100 transition-all">Ver Ranking</button>
@@ -198,7 +251,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   ) : (
                     <>
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                      Enviar p/ Cloud Postgres
+                      {isConnected ? 'Transmitir p/ Cloud' : 'Salvar Localmente'}
                     </>
                   )}
                </button>
@@ -210,6 +263,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           </section>
         </div>
       </div>
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+      `}</style>
     </div>
   );
 };
