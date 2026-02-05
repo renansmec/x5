@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Player, Season, PlayerStats } from '../types';
 
 interface AdminPanelProps {
@@ -53,6 +53,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     damage: 0
   });
 
+  // Estados de feedback visual
+  const [isSavingStats, setIsSavingStats] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [addPlayerSuccess, setAddPlayerSuccess] = useState(false);
+  const [addSeasonSuccess, setAddSeasonSuccess] = useState(false);
+
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState>({
     isOpen: false,
     type: null,
@@ -70,12 +76,48 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleUpdateStats = (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPlayerId || !selectedSeasonId) return;
-    onUpdateStats({
-      playerId: selectedPlayerId,
-      seasonId: selectedSeasonId,
-      ...matchData
-    });
-    alert('Estatísticas atualizadas com sucesso!');
+    
+    setIsSavingStats(true);
+    
+    // Simula um pequeno delay para feedback de carregamento
+    setTimeout(() => {
+      onUpdateStats({
+        playerId: selectedPlayerId,
+        seasonId: selectedSeasonId,
+        ...matchData
+      });
+      
+      setIsSavingStats(false);
+      setSaveSuccess(true);
+      
+      // Limpa apenas os dados numéricos após salvar
+      setMatchData({
+        matches: 0,
+        kills: 0,
+        deaths: 0,
+        assists: 0,
+        damage: 0
+      });
+
+      // Remove mensagem de sucesso após 3 segundos
+      setTimeout(() => setSaveSuccess(false), 3000);
+    }, 400);
+  };
+
+  const handleAddPlayerSubmit = () => {
+    if (!newPlayerNick.trim()) return;
+    onAddPlayer(newPlayerNick);
+    setNewPlayerNick('');
+    setAddPlayerSuccess(true);
+    setTimeout(() => setAddPlayerSuccess(false), 2000);
+  };
+
+  const handleAddSeasonSubmit = () => {
+    if (!newSeasonName.trim()) return;
+    onAddSeason(newSeasonName);
+    setNewSeasonName('');
+    setAddSeasonSuccess(true);
+    setTimeout(() => setAddSeasonSuccess(false), 2000);
   };
 
   const openConfirmModal = (type: 'player' | 'season', id: string, name: string) => {
@@ -108,7 +150,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 relative pb-10">
       {/* Confirmation Modal Overlay */}
       {confirmModal.isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -180,32 +222,40 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {/* Cadastro e Listas */}
       <div className="space-y-8">
         {/* Gestão de Jogadores */}
-        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700">
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
           <h3 className="text-xl font-gaming font-bold mb-4 flex items-center gap-2 text-slate-100">
             <span className="w-2 h-6 bg-blue-500 rounded-full"></span>
             Gestão de Jogadores
           </h3>
           <div className="flex gap-2 mb-6">
-            <input 
-              type="text" 
-              value={newPlayerNick}
-              onChange={(e) => setNewPlayerNick(e.target.value)}
-              placeholder="Nick do novo jogador..."
-              className="flex-1 bg-slate-900 border border-slate-700 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none"
-            />
+            <div className="relative flex-1">
+              <input 
+                type="text" 
+                value={newPlayerNick}
+                onChange={(e) => setNewPlayerNick(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddPlayerSubmit()}
+                placeholder="Nick do novo jogador..."
+                className="w-full bg-slate-900 border border-slate-700 rounded px-4 py-2 focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+              />
+              {addPlayerSuccess && (
+                <span className="absolute right-3 top-2.5 text-emerald-400 animate-in fade-in zoom-in">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                </span>
+              )}
+            </div>
             <button 
-              onClick={() => { onAddPlayer(newPlayerNick); setNewPlayerNick(''); }}
-              className="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded font-bold transition-colors"
+              onClick={handleAddPlayerSubmit}
+              className={`px-4 py-2 rounded font-bold transition-all transform active:scale-95 ${addPlayerSuccess ? 'bg-emerald-600 text-white' : 'bg-blue-600 hover:bg-blue-700'}`}
             >
-              Adicionar
+              {addPlayerSuccess ? 'Pronto!' : 'Adicionar'}
             </button>
           </div>
           <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-            {players.length === 0 && <p className="text-slate-500 text-sm italic">Nenhum jogador cadastrado.</p>}
+            {players.length === 0 && <p className="text-slate-500 text-sm italic text-center py-4">Nenhum jogador cadastrado.</p>}
             {players.map(p => (
-              <div key={p.id} className="flex items-center justify-between bg-slate-900/50 p-3 rounded border border-slate-700/50 hover:border-slate-600 transition-colors">
+              <div key={p.id} className="flex items-center justify-between bg-slate-900/50 p-3 rounded border border-slate-700/50 hover:border-slate-600 transition-colors group">
                 <span className="font-medium text-slate-200">{p.nick}</span>
-                <div className="flex gap-1">
+                <div className="flex gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => openEditModal('player', p.id, p.nick)}
                     className="text-slate-400 hover:text-blue-400 p-1.5 rounded hover:bg-blue-400/10 transition-colors"
@@ -231,32 +281,40 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </section>
 
         {/* Gestão de Temporadas */}
-        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700">
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-lg">
           <h3 className="text-xl font-gaming font-bold mb-4 flex items-center gap-2 text-slate-100">
             <span className="w-2 h-6 bg-purple-500 rounded-full"></span>
             Gestão de Temporadas
           </h3>
           <div className="flex gap-2 mb-6">
-            <input 
-              type="text" 
-              value={newSeasonName}
-              onChange={(e) => setNewSeasonName(e.target.value)}
-              placeholder="Nome da nova temporada..."
-              className="flex-1 bg-slate-900 border border-slate-700 rounded px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none"
-            />
+            <div className="relative flex-1">
+              <input 
+                type="text" 
+                value={newSeasonName}
+                onChange={(e) => setNewSeasonName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddSeasonSubmit()}
+                placeholder="Nome da nova temporada..."
+                className="w-full bg-slate-900 border border-slate-700 rounded px-4 py-2 focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+              />
+              {addSeasonSuccess && (
+                <span className="absolute right-3 top-2.5 text-emerald-400 animate-in fade-in zoom-in">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                </span>
+              )}
+            </div>
             <button 
-              onClick={() => { onAddSeason(newSeasonName); setNewSeasonName(''); }}
-              className="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded font-bold transition-colors"
+              onClick={handleAddSeasonSubmit}
+              className={`px-4 py-2 rounded font-bold transition-all transform active:scale-95 ${addSeasonSuccess ? 'bg-emerald-600 text-white' : 'bg-purple-600 hover:bg-purple-700'}`}
             >
-              Criar
+              {addSeasonSuccess ? 'Criado!' : 'Criar'}
             </button>
           </div>
           <div className="max-h-60 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
-            {seasons.length === 0 && <p className="text-slate-500 text-sm italic">Nenhuma temporada cadastrada.</p>}
+            {seasons.length === 0 && <p className="text-slate-500 text-sm italic text-center py-4">Nenhuma temporada cadastrada.</p>}
             {seasons.map(s => (
-              <div key={s.id} className="flex items-center justify-between bg-slate-900/50 p-3 rounded border border-slate-700/50 hover:border-slate-600 transition-colors">
+              <div key={s.id} className="flex items-center justify-between bg-slate-900/50 p-3 rounded border border-slate-700/50 hover:border-slate-600 transition-colors group">
                 <span className="font-medium text-slate-200">{s.name}</span>
-                <div className="flex gap-1">
+                <div className="flex gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
                   <button 
                     onClick={() => openEditModal('season', s.id, s.name)}
                     className="text-slate-400 hover:text-blue-400 p-1.5 rounded hover:bg-blue-400/10 transition-colors"
@@ -282,21 +340,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </section>
       </div>
 
-      {/* Registro de Stats */}
+      {/* Registro de Stats Acumulativo */}
       <div className="space-y-8">
-        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700">
+        <section className="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl relative overflow-hidden">
+          {/* Brilho de sucesso */}
+          <div className={`absolute inset-0 bg-emerald-500/5 transition-opacity pointer-events-none duration-1000 ${saveSuccess ? 'opacity-100' : 'opacity-0'}`}></div>
+          
           <h3 className="text-xl font-gaming font-bold mb-4 flex items-center gap-2 text-slate-100">
             <span className="w-2 h-6 bg-yellow-500 rounded-full"></span>
-            Registrar/Atualizar Stats
+            Registrar Novas Partidas
           </h3>
-          <form onSubmit={handleUpdateStats} className="space-y-4">
+          <p className="text-slate-400 text-sm mb-6">Os valores inseridos abaixo serão <strong>somados</strong> aos totais atuais da temporada.</p>
+          
+          <form onSubmit={handleUpdateStats} className="space-y-4 relative">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-slate-400 mb-1">Jogador</label>
                 <select 
                   value={selectedPlayerId}
                   onChange={(e) => setSelectedPlayerId(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 outline-none focus:border-yellow-500/50"
+                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 outline-none focus:border-yellow-500/50 hover:border-slate-600 transition-colors"
                   required
                 >
                   <option value="">Selecione...</option>
@@ -308,7 +371,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <select 
                   value={selectedSeasonId}
                   onChange={(e) => setSelectedSeasonId(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 outline-none focus:border-yellow-500/50"
+                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 outline-none focus:border-yellow-500/50 hover:border-slate-600 transition-colors"
                   required
                 >
                   <option value="">Selecione...</option>
@@ -319,73 +382,91 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Partidas</label>
+                <label className="block text-sm text-slate-400 mb-1">Novas Partidas (+)</label>
                 <input 
                   type="number" 
                   min="0"
                   value={matchData.matches}
-                  onChange={(e) => setMatchData({...matchData, matches: parseInt(e.target.value) || 0})}
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 outline-none"
+                  onChange={(e) => setMatchData({...matchData, matches: Math.max(0, parseInt(e.target.value) || 0)})}
+                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 outline-none focus:border-slate-500 transition-colors font-bold"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1">Dano Total</label>
+                <label className="block text-sm text-slate-400 mb-1">Novo Dano (+)</label>
                 <input 
                   type="number" 
                   min="0"
                   value={matchData.damage}
-                  onChange={(e) => setMatchData({...matchData, damage: parseInt(e.target.value) || 0})}
-                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 outline-none"
+                  onChange={(e) => setMatchData({...matchData, damage: Math.max(0, parseInt(e.target.value) || 0)})}
+                  className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 outline-none focus:border-slate-500 transition-colors font-bold"
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm text-slate-400 mb-1 text-emerald-400 font-bold">Vítimas</label>
+                <label className="block text-sm text-slate-400 mb-1 text-emerald-400 font-bold">Novas Vítimas (+)</label>
                 <input 
                   type="number" 
                   min="0"
                   value={matchData.kills}
-                  onChange={(e) => setMatchData({...matchData, kills: parseInt(e.target.value) || 0})}
-                  className="w-full bg-slate-900 border border-emerald-500/30 rounded px-3 py-2 outline-none focus:border-emerald-500"
+                  onChange={(e) => setMatchData({...matchData, kills: Math.max(0, parseInt(e.target.value) || 0)})}
+                  className="w-full bg-slate-900 border border-emerald-500/30 rounded px-3 py-2 outline-none focus:border-emerald-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1 text-rose-400 font-bold">Mortes</label>
+                <label className="block text-sm text-slate-400 mb-1 text-rose-400 font-bold">Novas Mortes (+)</label>
                 <input 
                   type="number" 
                   min="0"
                   value={matchData.deaths}
-                  onChange={(e) => setMatchData({...matchData, deaths: parseInt(e.target.value) || 0})}
-                  className="w-full bg-slate-900 border border-rose-500/30 rounded px-3 py-2 outline-none focus:border-rose-500"
+                  onChange={(e) => setMatchData({...matchData, deaths: Math.max(0, parseInt(e.target.value) || 0)})}
+                  className="w-full bg-slate-900 border border-rose-500/30 rounded px-3 py-2 outline-none focus:border-rose-500 transition-colors"
                 />
               </div>
               <div>
-                <label className="block text-sm text-slate-400 mb-1 text-sky-400 font-bold">Assists</label>
+                <label className="block text-sm text-slate-400 mb-1 text-sky-400 font-bold">Novas Assists (+)</label>
                 <input 
                   type="number" 
                   min="0"
                   value={matchData.assists}
-                  onChange={(e) => setMatchData({...matchData, assists: parseInt(e.target.value) || 0})}
-                  className="w-full bg-slate-900 border border-sky-500/30 rounded px-3 py-2 outline-none focus:border-sky-500"
+                  onChange={(e) => setMatchData({...matchData, assists: Math.max(0, parseInt(e.target.value) || 0)})}
+                  className="w-full bg-slate-900 border border-sky-500/30 rounded px-3 py-2 outline-none focus:border-sky-500 transition-colors"
                 />
               </div>
             </div>
 
             <button 
               type="submit"
-              disabled={players.length === 0 || seasons.length === 0}
-              className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed py-4 rounded-lg font-bold text-lg transition-all transform hover:scale-[1.01] active:scale-95 shadow-lg shadow-emerald-500/20"
+              disabled={players.length === 0 || seasons.length === 0 || isSavingStats}
+              className={`w-full py-4 rounded-lg font-bold text-lg transition-all transform active:scale-95 shadow-lg flex items-center justify-center gap-2
+                ${saveSuccess ? 'bg-emerald-600 text-white shadow-emerald-500/20' : 
+                  isSavingStats ? 'bg-slate-700 text-slate-300' :
+                  'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-500/20'}`}
             >
-              Salvar Estatísticas
+              {isSavingStats ? (
+                <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : saveSuccess ? (
+                <>
+                  <svg className="w-6 h-6 animate-in zoom-in" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
+                  Dados Contabilizados!
+                </>
+              ) : (
+                'Contabilizar Estatísticas'
+              )}
             </button>
           </form>
         </section>
 
         {/* Tip Informativo */}
-        <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800 text-slate-400 text-sm italic">
-          <p>Dica: O ranking é calculado usando Vítimas / Mortes. Jogadores invictos (0 mortes) recebem o total de kills como pontuação K/D.</p>
+        <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800 text-slate-400 text-sm italic group hover:border-slate-700 transition-colors">
+          <div className="flex gap-3">
+            <svg className="w-5 h-5 text-yellow-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <p>Dica: Os valores que você digitar serão somados aos dados que o jogador já possui. Se quiser subtrair (erro de digitação), você precisará editar os dados manualmente no banco de dados ou resetar a temporada.</p>
+          </div>
         </div>
       </div>
 

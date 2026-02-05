@@ -121,11 +121,22 @@ const App: React.FC = () => {
     const existingIndex = stats.findIndex(
       s => s.playerId === entry.playerId && s.seasonId === entry.seasonId
     );
+    
     if (existingIndex > -1) {
+      // Lógica ACUMULATIVA: Soma os novos valores aos existentes
       const newStats = [...stats];
-      newStats[existingIndex] = { ...newStats[existingIndex], ...entry };
+      const current = newStats[existingIndex];
+      newStats[existingIndex] = {
+        ...current,
+        matches: current.matches + entry.matches,
+        kills: current.kills + entry.kills,
+        deaths: current.deaths + entry.deaths,
+        assists: current.assists + entry.assists,
+        damage: current.damage + entry.damage,
+      };
       setStats(newStats);
     } else {
+      // Cria nova entrada se não existir
       setStats([...stats, { ...entry, id: `st${Date.now()}` }]);
     }
   };
