@@ -27,8 +27,8 @@ const getSafeEnv = (key: string): string => {
 
 const getKeys = () => {
   // Prioridade: Hardcoded > Ambiente > LocalStorage
-  const url = HARDCODED_SUPABASE_URL || getSafeEnv('https://seiwinqvzsfwupnvrygf.supabase.co') || localStorage.getItem('supabase_url') || '';
-  const anonKey = HARDCODED_SUPABASE_ANON_KEY || getSafeEnv('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlaXdpbnF2enNmd3VwbnZyeWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNTY1MDAsImV4cCI6MjA4NTgzMjUwMH0.cCqNfGnGlEjQU5D0nlD3avC5slaXsBySWwdFt-zsYQk') || localStorage.getItem('supabase_anon_key') || '';
+  const url = HARDCODED_SUPABASE_URL || getSafeEnv('HARDCODED_SUPABASE_URL') || localStorage.getItem('https://seiwinqvzsfwupnvrygf.supabase.co') || '';
+  const anonKey = HARDCODED_SUPABASE_ANON_KEY || getSafeEnv('SUPABASE_ANON_KEY') || localStorage.getItem('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlaXdpbnF2enNmd3VwbnZyeWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNTY1MDAsImV4cCI6MjA4NTgzMjUwMH0.cCqNfGnGlEjQU5D0nlD3avC5slaXsBySWwdFt-zsYQk') || '';
   return { url, anonKey };
 };
 
