@@ -34,9 +34,10 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
     }
 
     if (method === 'DELETE') return true;
-    return await response.json();
+    const data = await response.json();
+    return data || [];
   } catch (err) {
-    console.warn(`Erro de conexão com Supabase em ${table}. Verifique sua rede.`);
+    console.warn(`Erro de conexão com Supabase em ${table}.`);
     return null;
   }
 }
