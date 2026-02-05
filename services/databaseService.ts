@@ -36,7 +36,7 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
     if (method === 'DELETE') return true;
     return await response.json();
   } catch (err) {
-    console.warn(`Supabase falhou em ${table}. Usando cache local.`);
+    console.warn(`Erro de conexão com Supabase em ${table}. Verifique sua rede.`);
     return null;
   }
 }
@@ -76,7 +76,6 @@ export const db = {
         await supabaseFetch('players', 'POST', players);
       }
     }
-    localStorage.setItem('x5_players', JSON.stringify(players));
   },
 
   async saveSeasons(seasons: Season[]): Promise<void> {
@@ -86,7 +85,6 @@ export const db = {
         await supabaseFetch('seasons', 'POST', seasons);
       }
     }
-    localStorage.setItem('x5_seasons', JSON.stringify(seasons));
   },
 
   async updateStats(allStats: PlayerStats[]): Promise<void> {
@@ -96,7 +94,6 @@ export const db = {
         await supabaseFetch('stats', 'POST', allStats);
       }
     }
-    localStorage.setItem('x5_stats', JSON.stringify(allStats));
   },
 
   async clearDatabase(): Promise<void> {
@@ -107,8 +104,5 @@ export const db = {
         supabaseFetch('stats', 'DELETE', null, '?select=*')
       ]);
     }
-    localStorage.removeItem('x5_players');
-    localStorage.removeItem('x5_seasons');
-    localStorage.removeItem('x5_stats');
   }
 };
