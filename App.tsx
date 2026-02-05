@@ -1,313 +1,390 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { ViewType, Player, Season, PlayerStats, FullRankingEntry } from './types';
-import RankingTable from './components/RankingTable';
-import AdminPanel from './components/AdminPanel';
-import { db } from './services/databaseService';
-import { getRankingInsights } from './services/geminiService';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ViewMode, Season, Player, PlayerRankingRow } from './types';
+import { db } from './services/db';
+import { getPlayerInsights } from './services/geminiService';
 
-const ADMIN_PASSWORD = "x5admin2024";
+// Icons as SVG components to avoid external dependencies
+const IconTrophy = () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" /></svg>;
+const IconPlus = () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>;
+const IconSparkles = () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-7.714 2.143L11 21l-2.286-6.857L1 12l7.714-2.143L11 3z" /></svg>;
+const IconRefresh = () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>;
 
 const App: React.FC = () => {
-  const [view, setView] = useState<ViewType>('ranking');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('x5_is_admin') === 'true';
-  });
-  
-  // Estado inicial vazio - a verdade virá da Cloud
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [view, setView] = useState<ViewMode>(ViewMode.RANKING);
   const [seasons, setSeasons] = useState<Season[]>([]);
-  const [stats, setStats] = useState<PlayerStats[]>([]);
+  const [players, setPlayers] = useState<Player[]>([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState<string>('');
+  const [ranking, setRanking] = useState<PlayerRankingRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isCloudActive, setIsCloudActive] = useState(false);
-  const [selectedSeasonId, setSelectedSeasonId] = useState('');
-  const [aiInsight, setAiInsight] = useState<string>('');
-  const [loadingAi, setLoadingAi] = useState(false);
-  const [adminPasswordInput, setAdminPasswordInput] = useState('');
-  const [loginError, setLoginError] = useState(false);
+  // Form States
+  const [formPlayerId, setFormPlayerId] = useState('');
+  const [formKills, setFormKills] = useState(0);
+  const [formDeaths, setFormDeaths] = useState(0);
+  const [formAssists, setFormAssists] = useState(0);
+  const [formDamage, setFormDamage] = useState(0);
+  const [formMatches, setFormMatches] = useState(1);
+  const [newPlayerNick, setNewPlayerNick] = useState('');
 
-  // Carregamento de dados - Fonte Única de Verdade (Supabase)
-  const fetchData = async () => {
-    setIsLoading(true);
-    const cloudEnabled = db.isCloudEnabled();
-    setIsCloudActive(cloudEnabled);
-
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      const [cloudPlayers, cloudSeasons, cloudStats] = await Promise.all([
-        db.getPlayers(),
+      const [fetchedSeasons, fetchedPlayers] = await Promise.all([
         db.getSeasons(),
-        db.getStats()
+        db.getPlayers()
       ]);
-
-      if (cloudPlayers !== null && cloudSeasons !== null && cloudStats !== null) {
-        setPlayers(cloudPlayers);
-        setSeasons(cloudSeasons);
-        setStats(cloudStats);
-
-        if (cloudSeasons.length > 0 && !selectedSeasonId) {
-          // Seleciona a temporada mais recente ou a primeira
-          setSelectedSeasonId(cloudSeasons[0].id);
-        }
-      } else {
-        console.warn("Nenhum dado retornado do banco ou banco offline.");
+      setSeasons(fetchedSeasons);
+      setPlayers(fetchedPlayers);
+      
+      // Sempre seleciona a temporada mais recente (primeira da lista ordenada por created_at DESC)
+      if (fetchedSeasons.length > 0) {
+        setSelectedSeasonId(fetchedSeasons[0].id);
       }
     } catch (error) {
-      console.error("Falha ao sincronizar ranking:", error);
+      console.error("Erro ao carregar dados do Supabase:", error);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    fetchData();
   }, []);
 
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const loadRanking = useCallback(async () => {
+    if (selectedSeasonId) {
+      const data = await db.getRanking(selectedSeasonId);
+      setRanking(data);
+    }
+  }, [selectedSeasonId]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  useEffect(() => {
+    loadRanking();
+  }, [selectedSeasonId, loadRanking]);
+
+  const handleAddStats = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPasswordInput === ADMIN_PASSWORD) {
-      setIsAdminAuthenticated(true);
-      sessionStorage.setItem('x5_is_admin', 'true');
-      setLoginError(false);
-      setAdminPasswordInput('');
-    } else {
-      setLoginError(true);
+    if (!formPlayerId || !selectedSeasonId) {
+      alert("Selecione um jogador e uma temporada ativa.");
+      return;
     }
-  };
 
-  const handleResetData = async () => {
-    if (window.confirm("Deseja deletar TUDO do banco de dados oficial?")) {
-      setIsLoading(true);
-      await db.clearDatabase();
-      window.location.reload();
-    }
-  };
-
-  const currentRanking: FullRankingEntry[] = useMemo(() => {
-    if (!selectedSeasonId) return [];
-    
-    return stats
-      .filter(s => s.seasonId === selectedSeasonId)
-      .map(s => {
-        const player = players.find(p => p.id === s.playerId);
-        const kdValue = s.deaths === 0 ? s.kills : s.kills / s.deaths;
-        return {
-          ...s,
-          nick: player?.nick || 'Desconhecido',
-          kd: kdValue,
-          damagePerMatch: s.matches === 0 ? 0 : s.damage / s.matches
-        };
-      })
-      .sort((a, b) => b.kd - a.kd);
-  }, [stats, selectedSeasonId, players]);
-
-  // Admin Actions
-  const handleAddPlayer = (nick: string) => {
-    setPlayers(prev => [...prev, { id: `p${Date.now()}`, nick }]);
-  };
-
-  const handleDeletePlayer = (id: string) => {
-    setPlayers(prev => prev.filter(p => p.id !== id));
-    setStats(prev => prev.filter(s => s.playerId !== id));
-  };
-
-  const handleAddSeason = (name: string) => {
-    const id = `s${Date.now()}`;
-    setSeasons(prev => [...prev, { id, name }]);
-    if (!selectedSeasonId) setSelectedSeasonId(id);
-  };
-
-  const handleDeleteSeason = (id: string) => {
-    setSeasons(prev => prev.filter(s => s.id !== id));
-    setStats(prev => prev.filter(s => s.seasonId !== id));
-    if (selectedSeasonId === id) setSelectedSeasonId('');
-  };
-
-  const handleUpdateStats = (entry: Omit<PlayerStats, 'id'>) => {
-    setStats(prev => {
-      const newStats = [...prev];
-      const idx = newStats.findIndex(s => s.playerId === entry.playerId && s.seasonId === entry.seasonId);
-      if (idx > -1) {
-        newStats[idx] = { 
-          ...newStats[idx], 
-          matches: newStats[idx].matches + entry.matches,
-          kills: newStats[idx].kills + entry.kills,
-          deaths: newStats[idx].deaths + entry.deaths,
-          assists: newStats[idx].assists + entry.assists,
-          damage: newStats[idx].damage + entry.damage
-        };
-      } else {
-        newStats.push({ ...entry, id: `st${Date.now()}` });
-      }
-      return newStats;
-    });
-  };
-
-  const handlePublishToCloud = async () => {
-    setIsLoading(true);
     try {
-      await Promise.all([
-        db.savePlayers(players),
-        db.saveSeasons(seasons),
-        db.updateStats(stats)
-      ]);
-      alert("✅ Dados sincronizados com o Banco de Dados!");
-    } catch (e) {
-      alert("❌ Falha na sincronização.");
-    } finally {
-      setIsLoading(false);
+      await db.saveMatchStats({
+        player_id: formPlayerId,
+        season_id: selectedSeasonId,
+        kills: formKills,
+        deaths: formDeaths,
+        assists: formAssists,
+        damage: formDamage,
+        match_count: formMatches
+      });
+
+      // Reset Form
+      setFormKills(0);
+      setFormDeaths(0);
+      setFormAssists(0);
+      setFormDamage(0);
+      setFormMatches(1);
+      
+      alert('Estatísticas registradas com sucesso!');
+      await loadRanking();
+      setView(ViewMode.RANKING);
+    } catch (error) {
+      alert("Erro ao salvar estatísticas. Verifique sua conexão com o Supabase.");
     }
   };
 
-  const generateAICommentary = async () => {
-    if (currentRanking.length === 0) return;
-    setLoadingAi(true);
-    const seasonName = seasons.find(s => s.id === selectedSeasonId)?.name || 'Temporada';
-    const insight = await getRankingInsights(currentRanking, seasonName);
-    setAiInsight(insight);
-    setLoadingAi(false);
+  const handleAddPlayer = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPlayerNick.trim()) return;
+    try {
+      await db.addPlayer(newPlayerNick.trim());
+      setNewPlayerNick('');
+      const fetchedPlayers = await db.getPlayers();
+      setPlayers(fetchedPlayers);
+      alert('Jogador adicionado!');
+    } catch (error) {
+      alert("Erro ao adicionar jogador. O Nick pode já estar em uso.");
+    }
   };
 
-  if (isLoading && view === 'ranking') {
-    return (
-      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 font-gaming">
-        <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-xl animate-pulse tracking-widest uppercase">Buscando Verdade do Banco...</p>
-      </div>
-    );
-  }
+  const generateAIInsight = async () => {
+    if (ranking.length === 0) return;
+    setAiLoading(true);
+    const season = seasons.find(s => s.id === selectedSeasonId);
+    const insight = await getPlayerInsights(ranking, season?.name || 'Temporada');
+    setAiInsight(insight);
+    setAiLoading(false);
+    setView(ViewMode.INSIGHTS);
+  };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 pb-20">
-      <header className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 shadow-xl">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => { setView('ranking'); fetchData(); }}>
-            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg shadow-emerald-500/20">X5</div>
-            <div className="hidden sm:block">
-              <h1 className="text-xl font-gaming font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
-                RANKING AMIGOS
-              </h1>
-              <div className="flex items-center gap-2">
-                <div className={`w-1.5 h-1.5 rounded-full ${isCloudActive ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
-                  {isCloudActive ? 'Banco de Dados Ativo' : 'Erro de Conexão com Supabase'}
-                </span>
-              </div>
-            </div>
+    <div className="min-h-screen flex flex-col items-center pb-20 pt-8 px-4 sm:px-8">
+      {/* Header */}
+      <header className="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center mb-10 space-y-4 md:space-y-0">
+        <div className="flex items-center space-x-3">
+          <div className="bg-indigo-600 p-2 rounded-lg shadow-lg shadow-indigo-500/30">
+            <IconTrophy />
           </div>
-          
-          <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
-            <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'ranking' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
-            <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'admin' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Painel Master</button>
-            <button onClick={fetchData} className="p-2 text-slate-400 hover:text-emerald-400 transition-colors" title="Forçar Atualização">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-            </button>
-          </nav>
+          <div>
+            <h1 className="text-2xl font-extrabold tracking-tight text-white uppercase">X5 Friends <span className="text-indigo-500">Pro</span></h1>
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-widest">E-Sports Stats Tracker</p>
+          </div>
         </div>
+
+        <nav className="flex space-x-2 bg-slate-900/50 p-1.5 rounded-xl border border-slate-800">
+          <button 
+            onClick={() => setView(ViewMode.RANKING)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${view === ViewMode.RANKING ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+          >
+            Ranking
+          </button>
+          <button 
+            onClick={() => setView(ViewMode.REGISTER)}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${view === ViewMode.REGISTER ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' : 'text-slate-400 hover:text-white'}`}
+          >
+            Registrar
+          </button>
+          <button 
+            onClick={generateAIInsight}
+            disabled={aiLoading}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold flex items-center space-x-2 transition-all ${view === ViewMode.INSIGHTS ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
+          >
+            {aiLoading ? <IconRefresh className="animate-spin" /> : <IconSparkles />}
+            <span>Análise IA</span>
+          </button>
+        </nav>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 mt-8">
-        {view === 'ranking' ? (
-          <div className="space-y-8 animate-in fade-in duration-500">
-             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div className="w-full md:w-auto">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Escolher Temporada</label>
-                  <select 
-                    value={selectedSeasonId} 
-                    onChange={(e) => setSelectedSeasonId(e.target.value)} 
-                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500/50 shadow-xl cursor-pointer"
-                  >
-                    <option value="">Selecione a Temporada...</option>
-                    {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                  </select>
-                </div>
-                <button onClick={generateAICommentary} disabled={loadingAi || currentRanking.length === 0} className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-blue-600 hover:scale-105 px-8 py-4 rounded-xl font-bold shadow-2xl transition-all disabled:opacity-50">
-                  {loadingAi ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "✨ Analisar com Gemini"}
-                </button>
-             </div>
-
-             {aiInsight && (
-               <div className="bg-slate-900 border border-emerald-500/20 p-6 rounded-2xl shadow-2xl animate-in slide-in-from-top-4">
-                 <h3 className="text-emerald-400 font-bold mb-2 flex items-center gap-2">✨ Insight Pro</h3>
-                 <div className="text-slate-300 italic leading-relaxed whitespace-pre-wrap">{aiInsight}</div>
-                 <button onClick={() => setAiInsight('')} className="mt-4 text-[10px] text-slate-500 uppercase hover:text-slate-300">Esconder análise</button>
-               </div>
-             )}
-
-             {currentRanking.length > 0 ? (
-               <div className="space-y-10">
-                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div className="lg:col-span-3 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 h-[350px] shadow-inner">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={currentRanking}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                          <XAxis dataKey="nick" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                          <Tooltip cursor={{fill: '#1e293b', opacity: 0.4}} contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }} />
-                          <Bar dataKey="kd" radius={[6, 6, 0, 0]} barSize={40}>
-                             {currentRanking.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.kd >= 1.5 ? '#10b981' : entry.kd >= 1.0 ? '#3b82f6' : '#f43f5e'} />)}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
-                   </div>
-                   <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center items-center text-center shadow-xl">
-                      <div className="mb-6">
-                        <p className="text-slate-500 uppercase tracking-widest text-xs font-bold mb-1">Kills da Season</p>
-                        <p className="text-5xl font-gaming font-bold text-emerald-400">
-                          {currentRanking.reduce((acc, curr) => acc + curr.kills, 0)}
-                        </p>
-                      </div>
-                      <div className="w-full h-px bg-slate-800 my-4"></div>
-                      <div>
-                        <p className="text-slate-500 uppercase tracking-widest text-xs font-bold mb-1">Dano Total</p>
-                        <p className="text-3xl font-gaming font-bold text-orange-400">
-                          {(currentRanking.reduce((acc, curr) => acc + curr.damage, 0)).toLocaleString('pt-BR')}
-                        </p>
-                      </div>
-                   </div>
-                 </div>
-                 <RankingTable data={currentRanking} />
-               </div>
-             ) : (
-               <div className="text-center py-24 bg-slate-900/30 border border-slate-800 rounded-3xl border-dashed">
-                 <p className="text-slate-500 text-lg italic">
-                    {selectedSeasonId ? 'Nenhum dado encontrado no banco para esta temporada.' : 'Selecione uma temporada para ver os dados reais.'}
-                 </p>
-               </div>
-             )}
-          </div>
-        ) : !isAdminAuthenticated ? (
-          <div className="max-w-md mx-auto mt-20 p-10 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl animate-in zoom-in-95">
-            <h2 className="text-2xl font-gaming font-bold text-center mb-6 text-emerald-400">Acesso Restrito</h2>
-            <form onSubmit={handleAdminLogin} className="space-y-4">
-              <input 
-                type="password" 
-                value={adminPasswordInput} 
-                onChange={(e) => {setAdminPasswordInput(e.target.value); setLoginError(false);}} 
-                placeholder="Insira a Senha Master" 
-                className={`w-full bg-slate-800 border ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-xl px-4 py-4 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all`}
-                autoFocus 
-              />
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-bold shadow-lg transition-all">Autenticar</button>
-            </form>
+      {/* Main Content */}
+      <main className="w-full max-w-6xl">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+            <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Conectando ao Supabase...</p>
           </div>
         ) : (
-          <AdminPanel 
-            players={players} seasons={seasons} stats={stats}
-            onAddPlayer={handleAddPlayer} onDeletePlayer={handleDeletePlayer}
-            onAddSeason={handleAddSeason} onDeleteSeason={handleDeleteSeason}
-            onUpdateStats={handleUpdateStats} onResetData={handleResetData} onSetView={setView}
-            onEditPlayer={() => {}} onEditSeason={() => {}}
-            onPublish={handlePublishToCloud}
-          />
+          <>
+            {view === ViewMode.RANKING && (
+              <div className="space-y-6">
+                {/* Season Filter */}
+                <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-2xl gap-4">
+                  <div className="flex items-center space-x-4 w-full sm:w-auto">
+                    <label className="text-slate-400 text-sm font-bold uppercase whitespace-nowrap">Temporada:</label>
+                    <select 
+                      value={selectedSeasonId}
+                      onChange={(e) => setSelectedSeasonId(e.target.value)}
+                      className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg focus:ring-indigo-500 focus:border-indigo-500 block w-full p-2.5 outline-none"
+                    >
+                      {seasons.length > 0 ? seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>) : <option>Nenhuma temporada encontrada</option>}
+                    </select>
+                  </div>
+                  <div className="text-slate-500 text-xs font-mono uppercase">
+                    Total: {ranking.length} Ativos nesta Season
+                  </div>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-800/50 text-slate-400 text-[10px] uppercase tracking-widest font-bold">
+                        <th className="px-6 py-4"># Pos</th>
+                        <th className="px-6 py-4">Nick</th>
+                        <th className="px-6 py-4 text-center">Partidas</th>
+                        <th className="px-6 py-4 text-center">Vítimas</th>
+                        <th className="px-6 py-4 text-center">Mortes</th>
+                        <th className="px-6 py-4 text-center text-indigo-400">Assists</th>
+                        <th className="px-6 py-4 text-center">Dano Total</th>
+                        <th className="px-6 py-4 text-center text-indigo-400">Dano/M</th>
+                        <th className="px-6 py-4 text-right text-emerald-400">K/D</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {ranking.length > 0 ? ranking.map((row, index) => (
+                        <tr key={row.player_id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="px-6 py-4">
+                            <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full font-bold text-xs ${index === 0 ? 'bg-amber-400 text-black shadow-lg shadow-amber-400/20' : index === 1 ? 'bg-slate-300 text-black' : index === 2 ? 'bg-orange-400 text-black' : 'bg-slate-800 text-slate-400'}`}>
+                              {index + 1}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 font-bold text-slate-100">{row.nick}</td>
+                          <td className="px-6 py-4 text-center mono text-slate-400">{row.matches}</td>
+                          <td className="px-6 py-4 text-center mono text-slate-300 font-semibold">{row.kills}</td>
+                          <td className="px-6 py-4 text-center mono text-slate-500">{row.deaths}</td>
+                          <td className="px-6 py-4 text-center mono text-slate-400">{row.assists}</td>
+                          <td className="px-6 py-4 text-center mono text-slate-400">{row.damage.toLocaleString()}</td>
+                          <td className="px-6 py-4 text-center mono text-indigo-300 font-medium">{row.avg_damage}</td>
+                          <td className="px-6 py-4 text-right mono font-extrabold text-emerald-400">{row.kd.toFixed(2)}</td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={9} className="px-6 py-20 text-center text-slate-500 uppercase tracking-widest text-sm">
+                            Nenhum dado encontrado para a temporada selecionada.<br/>
+                            <span className="text-xs font-normal lowercase">Comece registrando uma partida!</span>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {view === ViewMode.REGISTER && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Stats Form */}
+                <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-xl">
+                  <h3 className="text-lg font-bold text-white mb-6 uppercase flex items-center space-x-2">
+                    <IconPlus /> <span>Lançar Estatísticas</span>
+                  </h3>
+                  <form onSubmit={handleAddStats} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="col-span-1 md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Jogador</label>
+                        <select 
+                          required
+                          value={formPlayerId}
+                          onChange={(e) => setFormPlayerId(e.target.value)}
+                          className="bg-slate-800 border border-slate-700 text-white rounded-lg block w-full p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="">Selecione um jogador...</option>
+                          {players.map(p => <option key={p.id} value={p.id}>{p.nick}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Partidas</label>
+                        <input type="number" value={formMatches} onChange={(e) => setFormMatches(Number(e.target.value))} min="1" className="bg-slate-800 border border-slate-700 text-white rounded-lg block w-full p-3 outline-none" required />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Kills (Vítimas)</label>
+                        <input type="number" value={formKills} onChange={(e) => setFormKills(Number(e.target.value))} min="0" className="bg-slate-800 border border-slate-700 text-white rounded-lg block w-full p-3 outline-none" required />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Mortes</label>
+                        <input type="number" value={formDeaths} onChange={(e) => setFormDeaths(Number(e.target.value))} min="0" className="bg-slate-800 border border-slate-700 text-white rounded-lg block w-full p-3 outline-none" required />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Assistências</label>
+                        <input type="number" value={formAssists} onChange={(e) => setFormAssists(Number(e.target.value))} min="0" className="bg-slate-800 border border-slate-700 text-white rounded-lg block w-full p-3 outline-none" required />
+                      </div>
+                      <div className="col-span-1 md:col-span-2">
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Dano Total</label>
+                        <input type="number" value={formDamage} onChange={(e) => setFormDamage(Number(e.target.value))} min="0" className="bg-slate-800 border border-slate-700 text-white rounded-lg block w-full p-3 outline-none" required />
+                      </div>
+                    </div>
+                    <button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 rounded-lg transition-all shadow-lg shadow-indigo-600/20 uppercase tracking-widest text-sm mt-4">
+                      Salvar Estatísticas
+                    </button>
+                  </form>
+                </div>
+
+                {/* Player Management */}
+                <div className="space-y-8">
+                  <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-xl">
+                    <h3 className="text-lg font-bold text-white mb-6 uppercase">Novo Jogador</h3>
+                    <form onSubmit={handleAddPlayer} className="flex space-x-2">
+                      <input 
+                        type="text" 
+                        placeholder="Nick do Jogador..." 
+                        value={newPlayerNick}
+                        onChange={(e) => setNewPlayerNick(e.target.value)}
+                        className="flex-1 bg-slate-800 border border-slate-700 text-white rounded-lg p-3 outline-none focus:ring-2 focus:ring-indigo-500"
+                        required 
+                      />
+                      <button type="submit" className="bg-slate-700 hover:bg-slate-600 text-white font-bold px-6 rounded-lg transition-all uppercase text-xs">
+                        Adicionar
+                      </button>
+                    </form>
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl shadow-xl">
+                    <h3 className="text-lg font-bold text-white mb-6 uppercase">Jogadores Cadastrados</h3>
+                    <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                      {players.map(p => (
+                        <div key={p.id} className="bg-slate-800/50 p-2 px-4 rounded border border-slate-700 text-slate-300 text-sm font-medium">
+                          {p.nick}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {view === ViewMode.INSIGHTS && (
+              <div className="max-w-3xl mx-auto space-y-8">
+                <div className="bg-gradient-to-br from-indigo-900/20 to-purple-900/20 border border-indigo-500/30 p-10 rounded-3xl shadow-2xl backdrop-blur-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 p-8 opacity-10">
+                    <IconSparkles />
+                  </div>
+                  
+                  <h2 className="text-3xl font-black text-white mb-8 uppercase italic flex items-center space-x-3">
+                    <span className="text-indigo-400">#</span> 
+                    <span>Relatório do Analista IA</span>
+                  </h2>
+                  
+                  {aiInsight ? (
+                    <div className="prose prose-invert prose-indigo max-w-none text-slate-300 leading-relaxed space-y-6 text-lg">
+                      {aiInsight.split('\n').map((para, i) => (
+                        <p key={i}>{para}</p>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 text-slate-500 uppercase font-bold tracking-widest">
+                      Nenhuma análise gerada ainda.
+                    </div>
+                  )}
+
+                  <div className="mt-12 pt-8 border-t border-slate-800 flex justify-between items-center">
+                    <div className="flex items-center space-x-2 text-slate-500 text-xs uppercase font-bold tracking-widest">
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                      <span>Gemini-3 Flash Active</span>
+                    </div>
+                    <button 
+                      onClick={() => setView(ViewMode.RANKING)}
+                      className="text-indigo-400 hover:text-white transition-colors text-sm font-bold uppercase"
+                    >
+                      Voltar ao Ranking
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  {ranking.slice(0, 3).map((player, idx) => (
+                    <div key={player.player_id} className="bg-slate-900 border border-slate-800 p-4 rounded-xl text-center shadow-lg transform hover:-translate-y-1 transition-all">
+                      <div className={`text-2xl font-black mb-1 ${idx === 0 ? 'text-amber-400' : idx === 1 ? 'text-slate-300' : 'text-orange-400'}`}>
+                        {idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉'}
+                      </div>
+                      <div className="text-white font-bold text-sm uppercase truncate">{player.nick}</div>
+                      <div className="text-slate-500 text-[10px] uppercase font-bold">MVP Candidate</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         )}
       </main>
 
-      <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
-        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 Friends Ranking &bull; Dados Oficiais Supabase
-        </p>
+      {/* Persistent Call-to-Action for Mobile */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-full max-w-xs md:hidden z-50">
+        <button 
+          onClick={() => setView(view === ViewMode.REGISTER ? ViewMode.RANKING : ViewMode.REGISTER)}
+          className="w-full bg-indigo-600 text-white font-bold py-4 rounded-full shadow-2xl shadow-indigo-500/40 flex items-center justify-center space-x-2 border-2 border-white/10"
+        >
+          {view === ViewMode.REGISTER ? <IconTrophy /> : <IconPlus />}
+          <span>{view === ViewMode.REGISTER ? 'Ver Ranking' : 'Lançar Stats'}</span>
+        </button>
+      </div>
+
+      {/* Footer Info */}
+      <footer className="mt-20 text-slate-600 text-[10px] uppercase tracking-widest font-bold text-center">
+        &copy; 2024 X5 FRIENDS PRO RANKING SYSTEM • POWERED BY GEMINI 3 & SUPABASE
       </footer>
     </div>
   );
