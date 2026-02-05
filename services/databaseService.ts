@@ -3,128 +3,116 @@ import { Player, Season, PlayerStats } from '../types';
 import { INITIAL_PLAYERS, INITIAL_SEASONS, INITIAL_STATS } from '../constants';
 
 /**
- * CONFIGURAÇÃO MONGODB ATLAS DATA API
- * No Vercel, adicione estas variáveis de ambiente:
- * MONGODB_DATA_API_KEY, MONGODB_APP_ID, MONGODB_CLUSTER, MONGODB_DATABASE
+ * CONFIGURAÇÃO SUPABASE (POSTGRES)
+ * Adicione estas variáveis no Vercel:
+ * SUPABASE_URL: Ex: https://xyz.supabase.co
+ * SUPABASE_ANON_KEY: Sua chave anon/public
  */
 
 const CONFIG = {
-  apiKey: process.env.MONGODB_DATA_API_KEY || '',
-  baseUrl: `https://data.mongodb-api.com/app/${process.env.MONGODB_APP_ID || ''}/endpoint/data/v1`,
-  cluster: process.env.MONGODB_CLUSTER || 'Cluster0',
-  database: process.env.MONGODB_DATABASE || 'x5_friends_ranking',
-  dataSource: process.env.MONGODB_CLUSTER || 'Cluster0',
+  url: process.env.SUPABASE_URL || '',
+  anonKey: process.env.SUPABASE_ANON_KEY || '',
 };
 
-// Helper para chamadas à API do MongoDB
-async function mongoFetch(action: string, collection: string, body: any) {
-  // Fallback para LocalStorage se não houver configuração de API Key
-  if (!CONFIG.apiKey) {
-    console.warn("MongoDB API Key não configurada. Usando LocalStorage.");
+async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 'GET', body?: any, query: string = '') {
+  if (!CONFIG.url || !CONFIG.anonKey) return null;
+
+  const url = `${CONFIG.url}/rest/v1/${table}${query}`;
+  const headers: HeadersInit = {
+    'apikey': CONFIG.anonKey,
+    'Authorization': `Bearer ${CONFIG.anonKey}`,
+    'Content-Type': 'application/json',
+    'Prefer': method === 'POST' ? 'return=representation' : '',
+  };
+
+  try {
+    const response = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!response.ok) {
+      console.error(`Supabase Error [${table}]:`, await response.text());
+      return null;
+    }
+
+    if (method === 'DELETE') return true;
+    return await response.json();
+  } catch (err) {
+    console.warn(`Supabase falhou em ${table}. Usando fallback local.`);
     return null;
   }
-
-  const response = await fetch(`${CONFIG.baseUrl}/action/${action}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'api-key': CONFIG.apiKey,
-    },
-    body: JSON.stringify({
-      dataSource: CONFIG.dataSource,
-      database: CONFIG.database,
-      collection: collection,
-      ...body,
-    }),
-  });
-
-  if (!response.ok) {
-    const error = await response.json();
-    throw new Error(`MongoDB API Error: ${error.error || response.statusText}`);
-  }
-
-  return response.json();
 }
 
 export const db = {
-  // Busca Jogadores
+  isCloudEnabled: () => !!CONFIG.url && !!CONFIG.anonKey,
+
   async getPlayers(): Promise<Player[]> {
-    const result = await mongoFetch('find', 'players', {});
-    if (!result) {
+    const data = await supabaseFetch('players');
+    if (!data) {
       const saved = localStorage.getItem('x5_players');
       return saved ? JSON.parse(saved) : INITIAL_PLAYERS;
     }
-    return result.documents.length > 0 ? result.documents : INITIAL_PLAYERS;
+    return data.length > 0 ? data : INITIAL_PLAYERS;
   },
 
-  // Busca Temporadas
   async getSeasons(): Promise<Season[]> {
-    const result = await mongoFetch('find', 'seasons', {});
-    if (!result) {
+    const data = await supabaseFetch('seasons');
+    if (!data) {
       const saved = localStorage.getItem('x5_seasons');
       return saved ? JSON.parse(saved) : INITIAL_SEASONS;
     }
-    return result.documents.length > 0 ? result.documents : INITIAL_SEASONS;
+    return data.length > 0 ? data : INITIAL_SEASONS;
   },
 
-  // Busca Estatísticas
   async getStats(): Promise<PlayerStats[]> {
-    const result = await mongoFetch('find', 'stats', {});
-    if (!result) {
+    const data = await supabaseFetch('stats');
+    if (!data) {
       const saved = localStorage.getItem('x5_stats');
       return saved ? JSON.parse(saved) : INITIAL_STATS;
     }
-    return result.documents.length > 0 ? result.documents : INITIAL_STATS;
+    return data.length > 0 ? data : INITIAL_STATS;
   },
 
-  // Salva Jogadores (Sincronização em Lote)
   async savePlayers(players: Player[]): Promise<void> {
-    if (!CONFIG.apiKey) {
-      localStorage.setItem('x5_players', JSON.stringify(players));
-      return;
-    }
-    // No MongoDB Data API, poderíamos usar insertMany, mas para simplicidade em lote:
-    await mongoFetch('deleteMany', 'players', { filter: {} });
-    if (players.length > 0) {
-      await mongoFetch('insertMany', 'players', { documents: players });
+    localStorage.setItem('x5_players', JSON.stringify(players));
+    if (this.isCloudEnabled()) {
+      await supabaseFetch('players', 'DELETE', null, '?select=*');
+      if (players.length > 0) {
+        await supabaseFetch('players', 'POST', players);
+      }
     }
   },
 
-  // Salva Temporadas
   async saveSeasons(seasons: Season[]): Promise<void> {
-    if (!CONFIG.apiKey) {
-      localStorage.setItem('x5_seasons', JSON.stringify(seasons));
-      return;
-    }
-    await mongoFetch('deleteMany', 'seasons', { filter: {} });
-    if (seasons.length > 0) {
-      await mongoFetch('insertMany', 'seasons', { documents: seasons });
+    localStorage.setItem('x5_seasons', JSON.stringify(seasons));
+    if (this.isCloudEnabled()) {
+      await supabaseFetch('seasons', 'DELETE', null, '?select=*');
+      if (seasons.length > 0) {
+        await supabaseFetch('seasons', 'POST', seasons);
+      }
     }
   },
 
-  // Atualiza ou Insere Estatística (Lógica Acumulativa)
   async updateStats(allStats: PlayerStats[]): Promise<void> {
-    if (!CONFIG.apiKey) {
-      localStorage.setItem('x5_stats', JSON.stringify(allStats));
-      return;
-    }
-    
-    // Sincroniza o estado completo para garantir consistência
-    await mongoFetch('deleteMany', 'stats', { filter: {} });
-    if (allStats.length > 0) {
-      await mongoFetch('insertMany', 'stats', { documents: allStats });
+    localStorage.setItem('x5_stats', JSON.stringify(allStats));
+    if (this.isCloudEnabled()) {
+      await supabaseFetch('stats', 'DELETE', null, '?select=*');
+      if (allStats.length > 0) {
+        await supabaseFetch('stats', 'POST', allStats);
+      }
     }
   },
 
-  // Limpa o Banco
   async clearDatabase(): Promise<void> {
-    if (CONFIG.apiKey) {
+    localStorage.clear();
+    if (this.isCloudEnabled()) {
       await Promise.all([
-        mongoFetch('deleteMany', 'players', { filter: {} }),
-        mongoFetch('deleteMany', 'seasons', { filter: {} }),
-        mongoFetch('deleteMany', 'stats', { filter: {} })
+        supabaseFetch('players', 'DELETE', null, '?select=*'),
+        supabaseFetch('seasons', 'DELETE', null, '?select=*'),
+        supabaseFetch('stats', 'DELETE', null, '?select=*')
       ]);
     }
-    localStorage.clear();
   }
 };
