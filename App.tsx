@@ -157,7 +157,7 @@ const App: React.FC = () => {
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic">X5</div>
             <h1 className="text-2xl font-gaming font-bold tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              FRIENDS RANKING
+              DOS AMIGOS
             </h1>
           </div>
           
@@ -345,7 +345,7 @@ const App: React.FC = () => {
       </main>
 
       <footer className="mt-20 border-t border-slate-800 py-10 text-center text-slate-500 text-sm">
-        <p>© 2024 X5 dos Amigos - Desenvolvido com Gemini AI</p>
+        <p>© 2024 X5 dos Amigos </p>
       </footer>
     </div>
   );
