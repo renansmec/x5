@@ -174,17 +174,19 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 shadow-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => { setView('ranking'); fetchData(); }}>
-            
-           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic">X5</div>
-            <h1 className="text-2xl font-gaming font-bold italic tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              DOS AMIGOS
-            </h1>
-          </div>
+            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg shadow-emerald-500/20">X5</div>
+            <div className="hidden sm:block">
+              <h1 className="text-xl font-gaming font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                RANKING AMIGOS
+              </h1>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
+                Estatísticas em Tempo Real
+              </span>
+            </div>
           </div>
           
           <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
-            <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'ranking' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
+            <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'ranking' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
             <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'admin' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>
             <button onClick={fetchData} className="p-2 text-slate-500 hover:text-emerald-400" title="Atualizar Dados">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
@@ -202,20 +204,20 @@ const App: React.FC = () => {
                   <select 
                     value={selectedSeasonId} 
                     onChange={(e) => setSelectedSeasonId(e.target.value)} 
-                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
+                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 shadow-xl"
                   >
                     {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     {seasons.length === 0 && <option value="">Nenhuma temporada encontrada</option>}
                   </select>
                 </div>
-                <button onClick={generateAICommentary} disabled={loadingAi || currentRanking.length === 0} className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 px-8 py-4 rounded-xl font-bold shadow-2xl transition-all disabled:opacity-50">
+                <button onClick={generateAICommentary} disabled={loadingAi || currentRanking.length === 0} className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-blue-600 px-8 py-4 rounded-xl font-bold shadow-2xl transition-all disabled:opacity-50">
                   {loadingAi ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "✨ Analisar estatísticas"}
                 </button>
              </div>
 
              {aiInsight && (
-               <div className="bg-slate-900 border border-purple-500/20 p-6 rounded-2xl shadow-2xl animate-in slide-in-from-top-4">
-                 <h3 className="text-purple-400 font-bold mb-2">✨ Insight da IA</h3>
+               <div className="bg-slate-900 border border-emerald-500/20 p-6 rounded-2xl shadow-2xl animate-in slide-in-from-top-4">
+                 <h3 className="text-emerald-400 font-bold mb-2">✨ Insight da IA</h3>
                  <div className="text-slate-300 italic whitespace-pre-wrap">{aiInsight}</div>
                  <button onClick={() => setAiInsight('')} className="mt-4 text-[10px] text-slate-500 uppercase hover:text-slate-300 underline">Fechar</button>
                </div>
@@ -292,7 +294,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 dos Amigos &bull; SEASON 4
+          X5 Friends Ranking &bull; Dados em Nuvem
         </p>
       </footer>
     </div>
