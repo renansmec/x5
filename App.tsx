@@ -186,7 +186,7 @@ const App: React.FC = () => {
           <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
             <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'ranking' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
             <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'admin' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>
-            <button onClick={fetchData} className="p-2 text-slate-500 hover:text-emerald-400" title="Atualizar Dados">
+          <!--  <button onClick={fetchData} className="p-2 text-slate-500 hover:text-emerald-400" title="Atualizar Dados"> -->
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
             </button>
           </nav>
