@@ -65,7 +65,15 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
 
   // Remove barra final da URL se houver
   const cleanUrl = baseUrl.replace(/\/$/, "");
-  const endpoint = `${cleanUrl}/rest/v1/${table}${query}`;
+  
+  // Para DELETE sem filtro específico (apagar tudo), precisamos garantir que a API aceite.
+  // Muitas vezes o Supabase exige um filtro para DELETE. Usaremos 'id.neq.0' como "todos" se a query estiver vazia no DELETE.
+  let safeQuery = query;
+  if (method === 'DELETE' && (!query || query === '?select=*')) {
+     safeQuery = '?id=neq.0'; // Hack para selecionar "todos" se IDs forem strings ou numeros != 0
+  }
+
+  const endpoint = `${cleanUrl}/rest/v1/${table}${safeQuery}`;
 
   const headers: HeadersInit = {
     'apikey': anonKey,
@@ -83,24 +91,22 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
 
     if (!response.ok) {
       const text = await response.text();
-      console.error(`[Supabase Error] ${response.status} em ${table}:`, text);
-      return null;
+      console.error(`[Supabase Error] ${response.status} em ${table} (${method}):`, text);
+      throw new Error(text);
     }
 
     if (method === 'DELETE') return true;
     
-    // Tenta fazer parse do JSON com segurança
     try {
       const data = await response.json();
       return data || [];
     } catch (e) {
-      // Se não tiver corpo de resposta (ex: 204 No Content), retorna sucesso vazio
       return [];
     }
 
   } catch (err) {
     console.error(`[Network Error] Falha ao conectar em ${table}:`, err);
-    return null;
+    throw err;
   }
 }
 
@@ -121,45 +127,54 @@ export const db = {
   },
 
   async getPlayers(): Promise<Player[] | null> {
-    return await supabaseFetch('players', 'GET', null, '?select=*');
+    try { return await supabaseFetch('players', 'GET', null, '?select=*'); } catch { return null; }
   },
 
   async getSeasons(): Promise<Season[] | null> {
-    return await supabaseFetch('seasons', 'GET', null, '?select=*&order=id.desc');
+    try { return await supabaseFetch('seasons', 'GET', null, '?select=*&order=id.desc'); } catch { return null; }
   },
 
   async getStats(): Promise<PlayerStats[] | null> {
-    return await supabaseFetch('stats', 'GET', null, '?select=*');
+    try { return await supabaseFetch('stats', 'GET', null, '?select=*'); } catch { return null; }
   },
 
-  async savePlayers(players: Player[]): Promise<void> {
-    if (this.isCloudEnabled()) {
-      await supabaseFetch('players', 'DELETE', null, '?select=*');
+  // Método unificado para salvar tudo na ordem correta
+  async syncDatabase(players: Player[], seasons: Season[], stats: PlayerStats[]): Promise<void> {
+    if (!this.isCloudEnabled()) return;
+
+    try {
+      console.log("Iniciando sincronização...");
+      
+      // 1. Apagar filhos primeiro (Stats dependem de Players e Seasons)
+      await supabaseFetch('stats', 'DELETE');
+      
+      // 2. Apagar pais
+      // Usamos Promise.all aqui pois players e seasons não dependem entre si
+      await Promise.all([
+        supabaseFetch('players', 'DELETE'),
+        supabaseFetch('seasons', 'DELETE')
+      ]);
+
+      // 3. Criar pais
       if (players.length > 0) await supabaseFetch('players', 'POST', players);
-    }
-  },
-
-  async saveSeasons(seasons: Season[]): Promise<void> {
-    if (this.isCloudEnabled()) {
-      await supabaseFetch('seasons', 'DELETE', null, '?select=*');
       if (seasons.length > 0) await supabaseFetch('seasons', 'POST', seasons);
+
+      // 4. Criar filhos
+      if (stats.length > 0) await supabaseFetch('stats', 'POST', stats);
+
+      console.log("Sincronização concluída com sucesso.");
+    } catch (error) {
+      console.error("Erro fatal na sincronização:", error);
+      throw error; // Propaga erro para a UI avisar o usuário
     }
   },
 
-  async updateStats(allStats: PlayerStats[]): Promise<void> {
-    if (this.isCloudEnabled()) {
-      await supabaseFetch('stats', 'DELETE', null, '?select=*');
-      if (allStats.length > 0) await supabaseFetch('stats', 'POST', allStats);
-    }
-  },
-
+  // Mantido apenas para limpar tudo explicitamente
   async clearDatabase(): Promise<void> {
     if (this.isCloudEnabled()) {
-      await Promise.all([
-        supabaseFetch('players', 'DELETE', null, '?select=*'),
-        supabaseFetch('seasons', 'DELETE', null, '?select=*'),
-        supabaseFetch('stats', 'DELETE', null, '?select=*')
-      ]);
+      await supabaseFetch('stats', 'DELETE');
+      await supabaseFetch('players', 'DELETE');
+      await supabaseFetch('seasons', 'DELETE');
     }
   }
 };

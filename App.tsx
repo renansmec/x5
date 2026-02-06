@@ -38,12 +38,12 @@ const App: React.FC = () => {
       ]);
 
       if (cloudPlayers && cloudSeasons && cloudStats) {
-        setPlayers(cloudPlayers);
-        setSeasons(cloudSeasons);
-        setStats(cloudStats);
+        setPlayers(cloudPlayers || []);
+        setSeasons(cloudSeasons || []);
+        setStats(cloudStats || []);
 
         // Seleciona automaticamente a última temporada alimentada
-        if (cloudSeasons.length > 0 && !selectedSeasonId) {
+        if (cloudSeasons && cloudSeasons.length > 0 && !selectedSeasonId) {
           setSelectedSeasonId(cloudSeasons[0].id);
         }
       }
@@ -140,14 +140,12 @@ const App: React.FC = () => {
   const handlePublishToCloud = async () => {
     setIsLoading(true);
     try {
-      await Promise.all([
-        db.savePlayers(players),
-        db.saveSeasons(seasons),
-        db.updateStats(stats)
-      ]);
-      alert("✅ Dados sincronizados com o Banco de Dados!");
-    } catch (e) {
-      alert("❌ Falha ao publicar. Verifique o console.");
+      // Usa o novo método sincronizado que evita erros de Foreign Key
+      await db.syncDatabase(players, seasons, stats);
+      alert("✅ Dados sincronizados com sucesso!");
+    } catch (e: any) {
+      console.error(e);
+      alert(`❌ Falha ao publicar: ${e.message || "Erro desconhecido"}`);
     } finally {
       setIsLoading(false);
     }
