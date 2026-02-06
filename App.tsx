@@ -202,20 +202,20 @@ const App: React.FC = () => {
                   <select 
                     value={selectedSeasonId} 
                     onChange={(e) => setSelectedSeasonId(e.target.value)} 
-                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 shadow-xl"
+                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
                   >
                     {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     {seasons.length === 0 && <option value="">Nenhuma temporada encontrada</option>}
                   </select>
                 </div>
-                <button onClick={generateAICommentary} disabled={loadingAi || currentRanking.length === 0} className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-blue-600 px-8 py-4 rounded-xl font-bold shadow-2xl transition-all disabled:opacity-50">
+                <button onClick={generateAICommentary} disabled={loadingAi || currentRanking.length === 0} className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 px-8 py-4 rounded-xl font-bold shadow-2xl transition-all disabled:opacity-50">
                   {loadingAi ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "✨ Analisar estatísticas"}
                 </button>
              </div>
 
              {aiInsight && (
-               <div className="bg-slate-900 border border-emerald-500/20 p-6 rounded-2xl shadow-2xl animate-in slide-in-from-top-4">
-                 <h3 className="text-emerald-400 font-bold mb-2">✨ Insight da IA</h3>
+               <div className="bg-slate-900 border border-purple-500/20 p-6 rounded-2xl shadow-2xl animate-in slide-in-from-top-4">
+                 <h3 className="text-purple-400 font-bold mb-2">✨ Insight da IA</h3>
                  <div className="text-slate-300 italic whitespace-pre-wrap">{aiInsight}</div>
                  <button onClick={() => setAiInsight('')} className="mt-4 text-[10px] text-slate-500 uppercase hover:text-slate-300 underline">Fechar</button>
                </div>
