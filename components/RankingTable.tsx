@@ -58,7 +58,7 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
                 <td className="px-6 py-4">
                   <span className={`
                     px-2 py-1 rounded font-bold
-                    ${player.kd >= 1.5 ? 'bg-emerald-500/20 text-emerald-400' : 
+                    ${player.kd >= 2.5 ? 'bg-emerald-500/20 text-emerald-400' : 
                       player.kd >= 1.0 ? 'bg-blue-500/20 text-blue-400' : 
                       'bg-rose-500/20 text-rose-400'}
                   `}>
