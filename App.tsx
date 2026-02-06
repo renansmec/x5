@@ -175,14 +175,12 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => { setView('ranking'); fetchData(); }}>
             <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg shadow-emerald-500/20">X5</div>
-            <div className="hidden sm:block">
-              <h1 className="text-xl font-gaming font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
-                RANKING AMIGOS
-              </h1>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
-                Estatísticas em Tempo Real
-              </span>
-            </div>
+           <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic">X5</div>
+            <h1 className="text-2xl font-gaming font-bold tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              DOS AMIGOS
+            </h1>
+          </div>
           </div>
           
           <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
@@ -294,7 +292,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 Friends Ranking &bull; Dados em Nuvem
+          X5 dos Amigos &bull; Dados em Nuvem
         </p>
       </footer>
     </div>
