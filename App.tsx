@@ -292,7 +292,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 dos Amigos &bull; Dados em Nuvem
+          X5 dos Amigos &bull; SEASON 4
         </p>
       </footer>
     </div>
