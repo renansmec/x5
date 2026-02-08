@@ -267,6 +267,7 @@ const App: React.FC = () => {
                </div>
              )}
           </div>
+        ) : view === 'balancer' ? (
           <TeamBalancer players={players} seasons={seasons} stats={stats} />
         ) : !isAdminAuthenticated ? (
           <div className="max-w-md mx-auto mt-20 p-10 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl animate-in zoom-in-95">
