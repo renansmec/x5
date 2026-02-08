@@ -164,7 +164,7 @@ const App: React.FC = () => {
   if (isLoading && view === 'ranking' && players.length === 0) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 font-gaming">
-        <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <div className="w-12 h-12 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-sm tracking-widest uppercase opacity-50">Carregando X5 Ranking...</p>
       </div>
     );
@@ -175,7 +175,7 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 shadow-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => { setView('ranking'); fetchData(); }}>
-            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg shadow-emerald-500/20">X5</div>
+            <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg shadow-emerald-500/20">X5</div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-gaming font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
                 RANKING AMIGOS
