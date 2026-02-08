@@ -202,7 +202,7 @@ const App: React.FC = () => {
                   <select 
                     value={selectedSeasonId} 
                     onChange={(e) => setSelectedSeasonId(e.target.value)} 
-                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
+                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-white-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
                   >
                     {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     {seasons.length === 0 && <option value="">Nenhuma temporada encontrada</option>}
