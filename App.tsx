@@ -237,7 +237,7 @@ const App: React.FC = () => {
                    </div>
                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center items-center text-center shadow-xl">
                       <div className="mb-6">
-                        <p className="text-slate-500 uppercase text-xs font-bold mb-1">Kills</p>
+                        <p className="text-slate-500 uppercase text-xs font-bold mb-1">Kills total</p>
                         <p className="text-5xl font-gaming font-bold text-emerald-400">
                           {currentRanking.reduce((acc, curr) => acc + curr.kills, 0)}
                         </p>
