@@ -202,7 +202,7 @@ const App: React.FC = () => {
                   <select 
                     value={selectedSeasonId} 
                     onChange={(e) => setSelectedSeasonId(e.target.value)} 
-                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-white-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
+                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
                   >
                     {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     {seasons.length === 0 && <option value="">Nenhuma temporada encontrada</option>}
@@ -226,7 +226,7 @@ const App: React.FC = () => {
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={currentRanking}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                          <XAxis dataKey="nick" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                          <XAxis dataKey="nick" stroke="#bf15a6" fontSize={12} tickLine={false} axisLine={false} />
                           <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                           <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }} />
                           <Bar dataKey="kd" radius={[6, 6, 0, 0]} barSize={40}>
