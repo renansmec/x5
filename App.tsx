@@ -225,10 +225,10 @@ const App: React.FC = () => {
                     <div className="lg:col-span-3 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={currentRanking}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#58219c" vertical={false} />
                           <XAxis dataKey="nick" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                           <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #58219c', borderRadius: '12px' }} />
+                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }} />
                           <Bar dataKey="kd" radius={[6, 6, 0, 0]} barSize={40}>
                              {currentRanking.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.kd >= 1.5 ? '#10b981' : entry.kd >= 1.0 ? '#3b82f6' : '#f43f5e'} />)}
                           </Bar>
