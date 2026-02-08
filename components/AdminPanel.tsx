@@ -91,8 +91,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className={`border p-6 rounded-2xl shadow-xl transition-all ${isConnected ? 'bg-slate-900 border-slate-800' : 'bg-rose-950/20 border-rose-500/50'}`}>
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-            Status da Nuvem: {isConnected ? <span className="text-emerald-500">Conectado ao Supabase</span> : <span className="text-rose-500">Desconectado / Local</span>}
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-purple-500 animate-pulse' : 'bg-rose-500'}`}></div>
+            Status da Nuvem: {isConnected ? <span className="text-purple-500">Conectado ao Supabase</span> : <span className="text-rose-500">Desconectado / Local</span>}
           </h3>
           <button onClick={() => setShowConfig(!showConfig)} className="text-xs text-blue-400 hover:underline bg-slate-800 px-3 py-1 rounded-lg">
             {showConfig ? 'Ocultar Configuração' : '⚙️ Configurar Conexão'}
@@ -115,7 +115,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   value={manualUrl} 
                   onChange={(e) => setManualUrl(e.target.value)}
                   placeholder="https://seu-projeto.supabase.co" 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-emerald-500 text-emerald-300 font-mono"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-purple-500 text-purple-300 font-mono"
                 />
               </div>
               <div className="space-y-1">
