@@ -202,7 +202,7 @@ const App: React.FC = () => {
                   <select 
                     value={selectedSeasonId} 
                     onChange={(e) => setSelectedSeasonId(e.target.value)} 
-                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 shadow-xl"
+                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
                   >
                     {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     {seasons.length === 0 && <option value="">Nenhuma temporada encontrada</option>}
@@ -267,7 +267,7 @@ const App: React.FC = () => {
           <TeamBalancer players={players} seasons={seasons} stats={stats} />
         ) : !isAdminAuthenticated ? (
           <div className="max-w-md mx-auto mt-20 p-10 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl animate-in zoom-in-95">
-            <h2 className="text-2xl font-gaming font-bold text-center mb-6 text-emerald-400">Autenticação Master</h2>
+            <h2 className="text-2xl font-gaming font-bold text-center mb-6 text-purple-400">Autenticação master</h2>
             <form onSubmit={handleAdminLogin} className="space-y-4">
               <input 
                 type="password" 
@@ -277,7 +277,7 @@ const App: React.FC = () => {
                 className={`w-full bg-slate-800 border ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-xl px-4 py-4 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all`}
                 autoFocus 
               />
-              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-bold shadow-lg transition-all">Acessar Painel</button>
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-purple-700 py-4 rounded-xl font-bold shadow-lg transition-all">Acessar Painel</button>
             </form>
           </div>
         ) : (
@@ -294,7 +294,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 dos Amigos &bull; Dados em Nuvem
+          X5 dos Amigos &bull; SEASON 4
         </p>
       </footer>
     </div>
