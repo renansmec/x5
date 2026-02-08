@@ -178,11 +178,13 @@ const App: React.FC = () => {
             <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg shadow-purple-500/20">X5</div>
             <div className="hidden sm:block">
               <h1 className="text-xl font-gaming font-bold tracking-tight bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                RANKING AMIGOS
+                DOS AMIGOS
               </h1>
-              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
+             
+             {/* <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
                 Estatísticas em Tempo Real
-              </span>
+              </span>*/}
+              
             </div>
           </div>
           
@@ -244,7 +246,7 @@ const App: React.FC = () => {
                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center items-center text-center shadow-xl">
                       <div className="mb-6">
                         <p className="text-slate-500 uppercase text-xs font-bold mb-1">Kills</p>
-                        <p className="text-5xl font-gaming font-bold text-emerald-400">
+                        <p className="text-5xl font-gaming font-bold text-purple-400">
                           {currentRanking.reduce((acc, curr) => acc + curr.kills, 0)}
                         </p>
                       </div>
