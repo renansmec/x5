@@ -207,11 +207,9 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
            </div>
 
            <div className="flex justify-center mt-8 gap-4">
-             <button onClick={generateTeams} className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-6 py-3 rounded-xl font-bold border border-slate-700 transition-all">
-               Re-sortear (Mesmos Jogadores)
-             </button>
+
              <button onClick={() => setResult(null)} className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all">
-               Novo Sorteio
+               Novo sorteio
              </button>
            </div>
         </div>
