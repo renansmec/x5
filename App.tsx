@@ -222,7 +222,7 @@ const App: React.FC = () => {
              {currentRanking.length > 0 ? (
                <div className="space-y-10">
                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div className="lg:col-span-3 bg-emerald-900/50 p-6 rounded-2xl border border-slate-800 h-[350px]">
+                    <div className="lg:col-span-3 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={currentRanking}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
