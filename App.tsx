@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { ViewType, Player, Season, PlayerStats, FullRankingEntry } from './types';
 import RankingTable from './components/RankingTable';
 import AdminPanel from './components/AdminPanel';
+import TeamBalancer from './components/TeamBalancer';
 import { db } from './services/databaseService';
 import { getRankingInsights } from './services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -174,19 +175,24 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 shadow-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => { setView('ranking'); fetchData(); }}>
-            
-           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic">X5</div>
-            <h1 className="text-2xl font-gaming font-bold italic tracking-tight bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              DOS AMIGOS
-            </h1>
-          </div>
+            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg shadow-emerald-500/20">X5</div>
+            <div className="hidden sm:block">
+              <h1 className="text-xl font-gaming font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                RANKING AMIGOS
+              </h1>
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
+                Estatísticas em Tempo Real
+              </span>
+            </div>
           </div>
           
-          <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700">
-            <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'ranking' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
-            <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm ${view === 'admin' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>
-          
+          <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700 overflow-x-auto">
+            <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'ranking' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
+            <button onClick={() => setView('balancer')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'balancer' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Sorteio Teams</button>
+            <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'admin' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>
+            <button onClick={fetchData} className="p-2 text-slate-500 hover:text-emerald-400" title="Atualizar Dados">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
           </nav>
         </div>
       </header>
@@ -206,7 +212,9 @@ const App: React.FC = () => {
                     {seasons.length === 0 && <option value="">Nenhuma temporada encontrada</option>}
                   </select>
                 </div>
-                
+                <button onClick={generateAICommentary} disabled={loadingAi || currentRanking.length === 0} className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-blue-600 px-8 py-4 rounded-xl font-bold shadow-2xl transition-all disabled:opacity-50">
+                  {loadingAi ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "✨ Analisar com Gemini"}
+                </button>
              </div>
 
              {aiInsight && (
@@ -259,6 +267,7 @@ const App: React.FC = () => {
                </div>
              )}
           </div>
+          <TeamBalancer players={players} seasons={seasons} stats={stats} />
         ) : !isAdminAuthenticated ? (
           <div className="max-w-md mx-auto mt-20 p-10 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl animate-in zoom-in-95">
             <h2 className="text-2xl font-gaming font-bold text-center mb-6 text-emerald-400">Autenticação Master</h2>

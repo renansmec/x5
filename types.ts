@@ -26,4 +26,4 @@ export interface FullRankingEntry extends PlayerStats {
   damagePerMatch: number;
 }
 
-export type ViewType = 'ranking' | 'admin';
+export type ViewType = 'ranking' | 'admin' | 'balancer';
