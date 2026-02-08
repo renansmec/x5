@@ -204,7 +204,7 @@ const App: React.FC = () => {
           <div className="space-y-8 animate-in fade-in duration-500">
              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="w-full md:w-auto">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Selecione a Temporada</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Selecione a temporada</label>
                   <select 
                     value={selectedSeasonId} 
                     onChange={(e) => setSelectedSeasonId(e.target.value)} 
