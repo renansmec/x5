@@ -92,7 +92,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-purple-500 animate-pulse' : 'bg-rose-500'}`}></div>
-            Status da Nuvem: {isConnected ? <span className="text-purple-500">Conectado ao Supabase</span> : <span className="text-rose-500">Desconectado / Local</span>}
+            Status da Nuvem: {isConnected ? <span className="text-emerald-500">Conectado ao Supabase</span> : <span className="text-rose-500">Desconectado / Local</span>}
           </h3>
           <button onClick={() => setShowConfig(!showConfig)} className="text-xs text-blue-400 hover:underline bg-slate-800 px-3 py-1 rounded-lg">
             {showConfig ? 'Ocultar Configuração' : '⚙️ Configurar Conexão'}
@@ -232,7 +232,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             
             <h3 className="text-xl font-gaming font-bold mb-8 text-emerald-400 flex items-center gap-3">
               <span className="w-1.5 h-8 bg-emerald-500 rounded-full"></span>
-              Registrar Pontuação
+              Registrar pontuação
             </h3>
             
             <form onSubmit={handleUpdateStats} className="space-y-8">
@@ -240,14 +240,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Atleta</label>
                     <select value={selectedPlayerId} onChange={(e) => setSelectedPlayerId(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 outline-none focus:border-emerald-500 transition-all text-slate-200 appearance-none cursor-pointer shadow-inner">
-                      <option value="">Selecione o Jogador</option>
+                      <option value="">Selecione o jogador</option>
                       {players.map(p => <option key={p.id} value={p.id}>{p.nick}</option>)}
                     </select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Temporada</label>
                     <select value={selectedSeasonId} onChange={(e) => setSelectedSeasonId(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 outline-none focus:border-emerald-500 transition-all text-slate-200 appearance-none cursor-pointer shadow-inner">
-                      <option value="">Selecione a Temporada</option>
+                      <option value="">Selecione a temporada</option>
                       {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
