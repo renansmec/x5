@@ -170,7 +170,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
               {/* TIME A */}
               <div className="bg-slate-900 border border-blue-500/30 rounded-3xl overflow-hidden shadow-2xl shadow-blue-900/20">
                 <div className="bg-blue-600/20 p-4 border-b border-blue-500/30 flex justify-between items-center">
-                  <h3 className="font-gaming text-2xl font-bold text-blue-400">TIME ALPHA</h3>
+                  <h3 className="font-gaming text-2xl font-bold text-blue-400">TIME AZUL</h3>
                   <div className="text-right">
                     <p className="text-[10px] uppercase text-blue-300 font-bold tracking-widest">Média KD</p>
                     <p className="text-xl font-mono font-bold text-white">{result.avgA.toFixed(2)}</p>
@@ -189,7 +189,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
               {/* TIME B */}
               <div className="bg-slate-900 border border-rose-500/30 rounded-3xl overflow-hidden shadow-2xl shadow-rose-900/20">
                 <div className="bg-rose-600/20 p-4 border-b border-rose-500/30 flex justify-between items-center">
-                  <h3 className="font-gaming text-2xl font-bold text-rose-400">TIME OMEGA</h3>
+                  <h3 className="font-gaming text-2xl font-bold text-rose-400">TIME VERMELHO</h3>
                   <div className="text-right">
                     <p className="text-[10px] uppercase text-rose-300 font-bold tracking-widest">Média KD</p>
                     <p className="text-xl font-mono font-bold text-white">{result.avgB.toFixed(2)}</p>
