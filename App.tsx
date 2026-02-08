@@ -229,7 +229,7 @@ const App: React.FC = () => {
                           <XAxis dataKey="nick" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                           <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                           <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }} 
-                          itemStyle={{ color: '#fff' }}/>
+                          itemStyle={{ color: '#d6d6d6' }}/>
 
                           <Bar dataKey="kd" radius={[6, 6, 0, 0]} barSize={40}>
 
