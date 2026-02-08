@@ -94,14 +94,14 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-gaming font-bold text-white mb-2">Sorteio Equilibrado</h2>
+        <h2 className="text-3xl font-gaming font-bold text-white mb-2">Sorteio equilibrado de times</h2>
         <p className="text-slate-400">Selecione 10 jogadores para montar times balanceados pelo K/D da temporada.</p>
       </div>
 
       {/* SELEÇÃO DE TEMPORADA */}
       <div className="flex justify-center mb-8">
         <div className="w-full max-w-md">
-           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Temporada Base (K/D)</label>
+           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Temporada base (K/D)</label>
            <select 
              value={selectedSeasonId} 
              onChange={(e) => { setSelectedSeasonId(e.target.value); setResult(null); }} 
@@ -116,7 +116,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
       {!result && (
         <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 mb-8">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-gaming text-xl text-emerald-400 font-bold">
+            <h3 className="font-gaming text-xl text-purple-400 font-bold">
               Selecionar Jogadores <span className="text-slate-500 ml-2 text-base">({selectedPlayerIds.length}/10)</span>
             </h3>
             {selectedPlayerIds.length > 0 && (
@@ -135,14 +135,14 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
                   className={`
                     relative p-3 rounded-xl border text-left transition-all group
                     ${isSelected 
-                      ? 'bg-emerald-600 border-emerald-500 shadow-lg shadow-emerald-900/50 scale-105 z-10' 
+                      ? 'bg-emerald-600 border-emerald-500 shadow-lg shadow-purple-900/50 scale-105 z-10' 
                       : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-750'}
                     ${!isSelected && selectedPlayerIds.length >= 10 ? 'opacity-40 cursor-not-allowed' : ''}
                   `}
                 >
                   <div className="flex justify-between items-start">
                     <span className={`font-bold truncate pr-2 ${isSelected ? 'text-white' : 'text-slate-300'}`}>{player.nick}</span>
-                    <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-emerald-800 text-emerald-200' : 'bg-slate-900 text-slate-500'}`}>
+                    <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-purple-800 text-purple-200' : 'bg-slate-900 text-slate-500'}`}>
                       {player.kd.toFixed(2)}
                     </span>
                   </div>
