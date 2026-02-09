@@ -229,7 +229,7 @@ const App: React.FC = () => {
                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                     <div className="lg:col-span-3 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 h-[350px]">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={currentRanking}>
+                        <BarChart data={chartData}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                           <XAxis dataKey="nick" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                           <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
@@ -238,7 +238,7 @@ const App: React.FC = () => {
 
                           <Bar dataKey="kd" radius={[6, 6, 0, 0]} barSize={40}>
 
-                             {currentRanking.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.kd >= 2.5 ? '#10b981' : entry.kd >= 1.0 ? '#3b82f6' : '#f43f5e'} />)}
+                             {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.kd >= 2.5 ? '#10b981' : entry.kd >= 1.0 ? '#3b82f6' : '#f43f5e'} />)}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
