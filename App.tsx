@@ -97,6 +97,11 @@ const App: React.FC = () => {
       .sort((a, b) => b.kd - a.kd);
   }, [stats, selectedSeasonId, players]);
 
+  // Filtra dados para o gráfico (apenas jogadores com 3+ partidas)
+  const chartData = useMemo(() => {
+    return currentRanking.filter(p => p.matches >= 3);
+  }, [currentRanking]);
+
   // Admin Actions Handlers
   const handleAddPlayer = (nick: string) => setPlayers(prev => [...prev, { id: `p${Date.now()}`, nick }]);
   
