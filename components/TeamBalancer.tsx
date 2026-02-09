@@ -132,34 +132,34 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-gaming font-bold text-white mb-2">Sorteio Equilibrado</h2>
+        <h2 className="text-3xl font-gaming font-bold text-white mb-2">Sorteio equilibrado</h2>
         <p className="text-slate-400">Monte times automaticamente balanceados pelo K/D.</p>
       </div>
 
       {/* CONFIGURAÇÃO DO SORTEIO */}
       <div className="flex flex-col md:flex-row justify-center gap-4 mb-8">
         <div className="w-full md:w-64">
-           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Temporada Base (K/D)</label>
+           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Temporada base (K/D)</label>
            <select 
              value={selectedSeasonId} 
              onChange={(e) => { setSelectedSeasonId(e.target.value); setResultTeams(null); }} 
-             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 shadow-xl"
+             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 shadow-xl"
            >
              {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
            </select>
         </div>
         <div className="w-full md:w-64">
-           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Quantidade de Times</label>
+           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Quantidade de times</label>
            <select 
              value={numTeams} 
              onChange={handleNumTeamsChange} 
              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 shadow-xl"
            >
-             <option value={2}>2 times (10 togadores)</option>
-             <option value={3}>3 times (15 togadores)</option>
-             <option value={4}>4 times (20 togadores)</option>
-             <option value={5}>5 times (25 togadores)</option>
-             <option value={6}>6 times (30 togadores)</option>
+             <option value={2}>2 times (10 jogadores)</option>
+             <option value={3}>3 times (15 jogadores)</option>
+             <option value={4}>4 times (20 jogadores)</option>
+             <option value={5}>5 times (25 jogadores)</option>
+             <option value={6}>6 times (30 jogadores)</option>
            </select>
         </div>
       </div>
@@ -168,11 +168,11 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
       {!resultTeams && (
         <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 mb-8">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-gaming text-xl text-emerald-400 font-bold">
-              Selecionar Jogadores <span className={`ml-2 text-base ${selectedPlayerIds.length === totalPlayersNeeded ? 'text-emerald-500' : 'text-slate-500'}`}>({selectedPlayerIds.length}/{totalPlayersNeeded})</span>
+            <h3 className="font-gaming text-xl text-blue-400 font-bold">
+              Selecionar jogadores <span className={`ml-2 text-base ${selectedPlayerIds.length === totalPlayersNeeded ? 'text-emerald-500' : 'text-slate-500'}`}>({selectedPlayerIds.length}/{totalPlayersNeeded})</span>
             </h3>
             {selectedPlayerIds.length > 0 && (
-              <button onClick={() => setSelectedPlayerIds([])} className="text-xs text-rose-400 hover:text-rose-300 underline">Limpar Seleção</button>
+              <button onClick={() => setSelectedPlayerIds([])} className="text-xs text-rose-400 hover:text-rose-300 underline">Limpar seleção</button>
             )}
           </div>
           
