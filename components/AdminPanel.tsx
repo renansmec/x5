@@ -393,9 +393,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                </button>
             </form>
 
-            <div className="mt-12 pt-8 border-t border-slate-700/50 flex flex-col gap-4">
+          {/*  <div className="mt-12 pt-8 border-t border-slate-700/50 flex flex-col gap-4">
               <button onClick={onResetData} className="w-full bg-rose-950/20 hover:bg-rose-950/40 text-rose-500 border border-rose-900/30 py-4 rounded-xl font-bold transition-all text-xs uppercase tracking-widest">Wipe (Resetar Tudo)</button>
-            </div>
+            </div>*/}
           </section>
         </div>
       </div>
