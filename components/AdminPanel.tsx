@@ -248,7 +248,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                     <button onClick={() => startEditingPlayer(p)} className="text-blue-400 p-2 hover:bg-blue-500/10 rounded-lg transition-colors" title="Renomear">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                     </button>
-                    <button onClick={() => onDeletePlayer(p.id)} className="text-rose-500 p-2 hover:bg-rose-500/10 rounded-lg transition-colors" title="Excluir">
+                    <button 
+                      onClick={() => { if(window.confirm(`Tem certeza que deseja excluir o jogador "${p.nick}"?`)) onDeletePlayer(p.id); }} 
+                      className="text-rose-500 p-2 hover:bg-rose-500/10 rounded-lg transition-colors" 
+                      title="Excluir"
+                    >
                       <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                     </button>
                   </div>
@@ -272,7 +276,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               {seasons.map(s => (
                 <div key={s.id} className="flex justify-between items-center p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:bg-slate-800 transition-all">
                   <span className="text-slate-200 font-bold">{s.name}</span>
-                  <button onClick={() => onDeleteSeason(s.id)} className="text-rose-500 p-2 hover:bg-rose-500/10 rounded-lg transition-colors">
+                  <button 
+                    onClick={() => { if(window.confirm(`Tem certeza que deseja excluir a temporada "${s.name}"?`)) onDeleteSeason(s.id); }} 
+                    className="text-rose-500 p-2 hover:bg-rose-500/10 rounded-lg transition-colors"
+                  >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
                   </button>
                 </div>
