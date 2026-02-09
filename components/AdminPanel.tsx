@@ -309,7 +309,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={() => setFormMode('add')} 
                   className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${formMode === 'add' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  SOMAR
+                  ADICIONAR
                 </button>
                 <button 
                   onClick={() => setFormMode('edit')} 
