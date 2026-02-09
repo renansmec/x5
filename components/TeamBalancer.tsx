@@ -168,7 +168,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
       {!resultTeams && (
         <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800 mb-8">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="font-gaming text-xl text-blue-400 font-bold">
+            <h3 className="font-gaming text-xl text-purple-400 font-bold">
               Selecionar jogadores <span className={`ml-2 text-base ${selectedPlayerIds.length === totalPlayersNeeded ? 'text-emerald-500' : 'text-slate-500'}`}>({selectedPlayerIds.length}/{totalPlayersNeeded})</span>
             </h3>
             {selectedPlayerIds.length > 0 && (
@@ -187,7 +187,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
                   className={`
                     relative p-3 rounded-xl border text-left transition-all group
                     ${isSelected 
-                      ? 'bg-emerald-600 border-emerald-500 shadow-lg shadow-emerald-900/50 scale-105 z-10' 
+                      ? 'bg-purple-600 border-blue-500 shadow-lg shadow-purple-900/50 scale-105 z-10' 
                       : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-750'}
                     ${!isSelected && selectedPlayerIds.length >= totalPlayersNeeded ? 'opacity-40 cursor-not-allowed' : ''}
                   `}
