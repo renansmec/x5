@@ -330,7 +330,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <form onSubmit={handleSubmitStats} className="space-y-8">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Atleta</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Jogador</label>
                     <select value={selectedPlayerId} onChange={(e) => setSelectedPlayerId(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 outline-none focus:border-emerald-500 transition-all text-slate-200 appearance-none cursor-pointer shadow-inner">
                       <option value="">Selecione o Jogador</option>
                       {players.map(p => <option key={p.id} value={p.id}>{p.nick}</option>)}
