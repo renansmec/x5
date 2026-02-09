@@ -6,71 +6,13 @@ interface RankingTableProps {
   data: FullRankingEntry[];
 }
 
-// Estende a interface original para incluir os campos calculados localmente
-interface RankingRow extends FullRankingEntry {
-  score: number;
-  patent: string;
-  patentColor: string;
-}
-
-type SortKey = keyof RankingRow;
+type SortKey = keyof FullRankingEntry;
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
   key: SortKey;
   direction: SortDirection;
 }
-
-// Função para obter a Patente baseada no Score
-const getPatentInfo = (score: number): { label: string; color: string } => {
-  if (score <= 300) return { label: 'Prata I', color: 'text-slate-400' };
-  if (score <= 450) return { label: 'Prata II', color: 'text-slate-400' };
-  if (score <= 600) return { label: 'Prata III', color: 'text-slate-300' };
-  if (score <= 750) return { label: 'Prata IV', color: 'text-slate-300' };
-  if (score <= 900) return { label: 'Prata Elite', color: 'text-slate-200' };
-  if (score <= 1100) return { label: 'Prata Elite Mestre', color: 'text-slate-100' };
-  
-  if (score <= 1300) return { label: 'Ouro I', color: 'text-yellow-600' };
-  if (score <= 1500) return { label: 'Ouro II', color: 'text-yellow-500' };
-  if (score <= 1700) return { label: 'Ouro III', color: 'text-yellow-400' };
-  if (score <= 1900) return { label: 'Ouro Mestre', color: 'text-yellow-300' };
-  
-  if (score <= 2150) return { label: 'Mestre Guardião I', color: 'text-blue-400' }; // AK I
-  if (score <= 2400) return { label: 'Mestre Guardião II', color: 'text-blue-500' }; // AK II
-  if (score <= 2650) return { label: 'Mestre Guardião Elite', color: 'text-blue-600' }; // AK Elite
-  if (score <= 2900) return { label: 'Distinto Mestre Guardião', color: 'text-indigo-400' }; // AK Cruzada
-  
-  if (score <= 3200) return { label: 'Guardião Lendário', color: 'text-purple-400' }; // Xerife
-  if (score <= 3500) return { label: 'Águia Lendária', color: 'text-purple-300' };
-  if (score <= 3800) return { label: 'Águia Lendária Mestre', color: 'text-purple-200' };
-  if (score <= 4200) return { label: 'Supremo Mestre', color: 'text-pink-400' };
-  
-  return { label: 'Global Elite', color: 'text-red-500 animate-pulse' };
-};
-
-const calculateScore = (player: FullRankingEntry): number => {
-  if (player.matches === 0) return 0;
-
-  // 1. Calcular métricas brutas
-  const rawKD = player.deaths === 0 ? player.kills : player.kills / player.deaths;
-  const rawKPM = player.kills / player.matches;
-  const rawAPM = player.assists / player.matches;
-
-  // 2. Aplicar limites máximos (Caps)
-  const cappedKD = Math.min(rawKD, 2.5);
-  const cappedKPM = Math.min(rawKPM, 1.5);
-  const cappedAPM = Math.min(rawAPM, 1.2);
-
-  // 3. Fórmula do score
-  // Score = (KD * 400) + (KPM * 250) + (APM * 150) + (log10(partidas) * 100)
-  const score = 
-    (cappedKD * 400) + 
-    (cappedKPM * 250) + 
-    (cappedAPM * 150) + 
-    (Math.log10(player.matches) * 100);
-
-  return Math.round(score);
-};
 
 const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
   // Estado padrão: Ordenado por KD descendente (maior para o menor)
@@ -87,28 +29,13 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
   };
 
   const sortedData = useMemo(() => {
-    // 1. Enriquecer os dados com Score e Patente
-    const processedData: RankingRow[] = data.map(player => {
-      const score = calculateScore(player);
-      const { label, color } = getPatentInfo(score);
-      return {
-        ...player,
-        score,
-        patent: label,
-        patentColor: color
-      };
-    });
-
-    // 2. Filtra jogadores com menos de 3 partidas
-    const filtered = processedData.filter(player => player.matches >= 3);
+    // Filtra jogadores com menos de 3 partidas antes de ordenar
+    const filtered = data.filter(player => player.matches >= 3);
+    const sorted = [...filtered];
     
-    // 3. Ordena
-    return filtered.sort((a, b) => {
-      // Tratamento especial para patente (ordenar por score quando clicar em patente)
-      const key = sortConfig.key === 'patent' ? 'score' : sortConfig.key;
-      
-      const aValue = a[key];
-      const bValue = b[key];
+    return sorted.sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
 
       if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -159,19 +86,18 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
           <tr>
             <th className="px-6 py-4 text-slate-500 w-16">#</th>
             {renderHeader("Nick", "nick", "text-slate-300")}
-            {renderHeader("Patente", "patent", "text-purple-400", "text-left", "Baseado em Score (K/D, KPM, APM e Partidas)")}
-            {renderHeader("Score", "score", "text-slate-500", "text-right", "Pontuação Calculada")}
-            {renderHeader("Partidas", "matches", "text-slate-300", "text-center")}
-            {renderHeader("K/D", "kd", "text-yellow-400", "text-center")}
-            {renderHeader("Kills", "kills", "text-emerald-400", "text-center")}
-            {renderHeader("Assists", "assists", "text-sky-400", "text-center")}
-            {renderHeader("Dano", "damage", "text-orange-400", "text-right")}
+            {renderHeader("Partidas", "matches", "text-slate-300")}
+            {renderHeader("Vítimas", "kills", "text-emerald-400")}
+            {renderHeader("Mortes", "deaths", "text-rose-400")}
+            {renderHeader("Assists", "assists", "text-sky-400")}
+            {renderHeader("Dano", "damage", "text-orange-400")}
+            {renderHeader("K/D", "kd", "text-yellow-400", "text-left", "Cálculo: Vítimas / Mortes")}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-700">
           {sortedData.length === 0 ? (
             <tr>
-              <td colSpan={9} className="px-6 py-10 text-center text-slate-500 italic">
+              <td colSpan={8} className="px-6 py-10 text-center text-slate-500 italic">
                 {data.length > 0 
                   ? "Nenhum jogador elegível (mínimo 3 partidas)."
                   : "Nenhum dado encontrado para esta temporada."}
@@ -197,27 +123,22 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
                 <td className="px-6 py-4 font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
                   {player.nick}
                 </td>
-                <td className={`px-6 py-4 font-gaming font-bold tracking-wide ${player.patentColor}`}>
-                  {player.patent}
+                <td className="px-6 py-4 text-slate-300">{player.matches}</td>
+                <td className="px-6 py-4 text-emerald-400 font-medium">{player.kills}</td>
+                <td className="px-6 py-4 text-rose-400 font-medium">{player.deaths}</td>
+                <td className="px-6 py-4 text-sky-400">{player.assists}</td>
+                <td className="px-6 py-4 text-orange-400 font-medium">
+                  {player.damage.toLocaleString('pt-BR')}
                 </td>
-                <td className="px-6 py-4 text-slate-500 font-mono text-xs text-right">
-                  {player.score}
-                </td>
-                <td className="px-6 py-4 text-slate-300 text-center">{player.matches}</td>
-                <td className="px-6 py-4 text-center">
+                <td className="px-6 py-4">
                   <span className={`
                     px-2 py-1 rounded font-bold
-                    ${player.kd >= 1.5 ? 'bg-emerald-500/20 text-emerald-400' : 
+                    ${player.kd >= 2.5 ? 'bg-emerald-500/20 text-emerald-400' : 
                       player.kd >= 1.0 ? 'bg-blue-500/20 text-blue-400' : 
                       'bg-rose-500/20 text-rose-400'}
                   `}>
                     {player.kd.toFixed(2)}
                   </span>
-                </td>
-                <td className="px-6 py-4 text-emerald-400 font-medium text-center">{player.kills}</td>
-                <td className="px-6 py-4 text-sky-400 text-center">{player.assists}</td>
-                <td className="px-6 py-4 text-orange-400 font-medium text-right">
-                  {player.damage.toLocaleString('pt-BR')}
                 </td>
               </tr>
             ))
