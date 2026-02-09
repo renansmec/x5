@@ -29,7 +29,10 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
   };
 
   const sortedData = useMemo(() => {
-    const sorted = [...data];
+    // Filtra jogadores com menos de 3 partidas antes de ordenar
+    const filtered = data.filter(player => player.matches >= 3);
+    const sorted = [...filtered];
+    
     return sorted.sort((a, b) => {
       const aValue = a[sortConfig.key];
       const bValue = b[sortConfig.key];
@@ -95,7 +98,9 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
           {sortedData.length === 0 ? (
             <tr>
               <td colSpan={8} className="px-6 py-10 text-center text-slate-500 italic">
-                Nenhum dado encontrado para esta temporada.
+                {data.length > 0 
+                  ? "Nenhum jogador elegível (mínimo 3 partidas)."
+                  : "Nenhum dado encontrado para esta temporada."}
               </td>
             </tr>
           ) : (
