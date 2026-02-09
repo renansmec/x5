@@ -20,12 +20,12 @@ interface BalancedTeam {
 }
 
 const TEAM_CONFIGS = [
-  { name: 'TIME ALPHA', color: 'text-blue-400', border: 'border-blue-500/30', bg: 'bg-blue-600/20' },
-  { name: 'TIME OMEGA', color: 'text-rose-400', border: 'border-rose-500/30', bg: 'bg-rose-600/20' },
-  { name: 'TIME GAMMA', color: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-600/20' },
-  { name: 'TIME DELTA', color: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-600/20' },
-  { name: 'TIME EPSILON', color: 'text-purple-400', border: 'border-purple-500/30', bg: 'bg-purple-600/20' },
-  { name: 'TIME ZETA', color: 'text-cyan-400', border: 'border-cyan-500/30', bg: 'bg-cyan-600/20' },
+  { name: 'TIME 1', color: 'text-blue-400', border: 'border-blue-500/30', bg: 'bg-blue-600/20' },
+  { name: 'TIME 2', color: 'text-rose-400', border: 'border-rose-500/30', bg: 'bg-rose-600/20' },
+  { name: 'TIME 3', color: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-600/20' },
+  { name: 'TIME 4', color: 'text-emerald-400', border: 'border-emerald-500/30', bg: 'bg-emerald-600/20' },
+  { name: 'TIME 5', color: 'text-purple-400', border: 'border-purple-500/30', bg: 'bg-purple-600/20' },
+  { name: 'TIME 6', color: 'text-cyan-400', border: 'border-cyan-500/30', bg: 'bg-cyan-600/20' },
 ];
 
 const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) => {
