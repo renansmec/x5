@@ -14,23 +14,29 @@ interface AdminPanelProps {
   onEditSeason: (id: string, newName: string) => void;
   onDeleteSeason: (id: string) => void;
   onUpdateStats: (entry: Omit<PlayerStats, 'id'>) => void;
+  onOverwriteStats: (entry: Omit<PlayerStats, 'id'>) => void; // Novo prop para editar
   onResetData: () => void;
   onSetView: (view: ViewType) => void;
   onPublish: () => void;
 }
 
+type FormMode = 'add' | 'edit';
+
 const AdminPanel: React.FC<AdminPanelProps> = ({ 
   players, seasons, stats,
-  onAddPlayer, onDeletePlayer,
+  onAddPlayer, onDeletePlayer, onEditPlayer,
   onAddSeason, onDeleteSeason,
-  onUpdateStats, onResetData, onSetView, onPublish
+  onUpdateStats, onOverwriteStats, onResetData, onSetView, onPublish
 }) => {
   const [newPlayerNick, setNewPlayerNick] = useState('');
+  const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null); // ID do jogador sendo editado
+
   const [newSeasonName, setNewSeasonName] = useState('');
   const [selectedPlayerId, setSelectedPlayerId] = useState('');
   const [selectedSeasonId, setSelectedSeasonId] = useState('');
   const [matchData, setMatchData] = useState({ matches: 0, kills: 0, deaths: 0, assists: 0, damage: 0 });
   
+  const [formMode, setFormMode] = useState<FormMode>('add');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -41,31 +47,74 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [isConnected, setIsConnected] = useState(db.isCloudEnabled());
 
   useEffect(() => {
-    // Carrega chaves salvas ou atuais ao montar
     setManualUrl(localStorage.getItem('supabase_url') || '');
     setManualKey(localStorage.getItem('supabase_anon_key') || '');
     const connected = db.isCloudEnabled();
     setIsConnected(connected);
-    // Se não estiver conectado, mostra config automaticamente
     if (!connected) setShowConfig(true);
   }, []);
 
-  const handleUpdateStats = async (e: React.FormEvent) => {
+  // Efeito para carregar dados existentes quando estiver em modo de edição
+  useEffect(() => {
+    if (formMode === 'edit' && selectedPlayerId && selectedSeasonId) {
+      const existingStat = stats.find(s => s.playerId === selectedPlayerId && s.seasonId === selectedSeasonId);
+      if (existingStat) {
+        setMatchData({
+          matches: existingStat.matches,
+          kills: existingStat.kills,
+          deaths: existingStat.deaths,
+          assists: existingStat.assists,
+          damage: existingStat.damage
+        });
+      } else {
+        // Se não existir dados, zera
+        setMatchData({ matches: 0, kills: 0, deaths: 0, assists: 0, damage: 0 });
+      }
+    } else if (formMode === 'add') {
+      // Se mudar para add, zera para começar limpo (ou mantém o anterior se preferir, aqui optei por zerar)
+      // setMatchData({ matches: 0, kills: 0, deaths: 0, assists: 0, damage: 0 });
+    }
+  }, [formMode, selectedPlayerId, selectedSeasonId, stats]);
+
+  const handleSubmitStats = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPlayerId || !selectedSeasonId) return;
     setIsSaving(true);
     
-    onUpdateStats({
+    const entry = {
       playerId: selectedPlayerId,
       seasonId: selectedSeasonId,
       ...matchData
-    });
+    };
+
+    if (formMode === 'add') {
+      onUpdateStats(entry);
+    } else {
+      onOverwriteStats(entry);
+    }
     
     await new Promise(r => setTimeout(r, 600));
     setIsSaving(false);
     setSaveSuccess(true);
-    setMatchData({ matches: 0, kills: 0, deaths: 0, assists: 0, damage: 0 });
+    
+    if (formMode === 'add') {
+        setMatchData({ matches: 0, kills: 0, deaths: 0, assists: 0, damage: 0 });
+    }
+    
     setTimeout(() => setSaveSuccess(false), 3500);
+  };
+
+  const handleSavePlayerEdit = () => {
+    if (editingPlayerId && newPlayerNick.trim()) {
+      onEditPlayer(editingPlayerId, newPlayerNick);
+      setEditingPlayerId(null);
+      setNewPlayerNick('');
+    }
+  };
+
+  const startEditingPlayer = (player: Player) => {
+    setEditingPlayerId(player.id);
+    setNewPlayerNick(player.nick);
   };
 
   const saveManualConfig = () => {
@@ -91,12 +140,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       <div className={`border p-6 rounded-2xl shadow-xl transition-all ${isConnected ? 'bg-slate-900 border-slate-800' : 'bg-rose-950/20 border-rose-500/50'}`}>
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-purple-500 animate-pulse' : 'bg-rose-500'}`}></div>
-            Status da Nuvem: {isConnected ? <span className="text-emerald-500">Conectado ao servidor</span> : <span className="text-rose-500">Desconectado / Local</span>}
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
+            Status da Nuvem: {isConnected ? <span className="text-emerald-500">Conectado ao Supabase</span> : <span className="text-rose-500">Desconectado / Local</span>}
           </h3>
-         {/* <button onClick={() => setShowConfig(!showConfig)} className="text-xs text-blue-400 hover:underline bg-slate-800 px-3 py-1 rounded-lg">
+          <button onClick={() => setShowConfig(!showConfig)} className="text-xs text-blue-400 hover:underline bg-slate-800 px-3 py-1 rounded-lg">
             {showConfig ? 'Ocultar Configuração' : '⚙️ Configurar Conexão'}
-          </button>*/}
+          </button>
         </div>
         
         {!isConnected && (
@@ -115,7 +164,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   value={manualUrl} 
                   onChange={(e) => setManualUrl(e.target.value)}
                   placeholder="https://seu-projeto.supabase.co" 
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-purple-500 text-purple-300 font-mono"
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs outline-none focus:border-emerald-500 text-emerald-300 font-mono"
                 />
               </div>
               <div className="space-y-1">
@@ -143,9 +192,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 LIMPAR
               </button>
             </div>
-            <p className="text-[10px] text-slate-500 text-center italic mt-2">
-              Dica: Para conexão automática sem login, preencha as constantes <code>HARDCODED</code> no arquivo <code>services/databaseService.ts</code>.
-            </p>
           </div>
         )}
       </div>
@@ -177,17 +223,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               Gerenciar Jogadores
             </h3>
             <div className="flex gap-2 mb-6">
-              <input type="text" value={newPlayerNick} onChange={(e) => setNewPlayerNick(e.target.value)} placeholder="Nick do player..." className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-blue-500 transition-all text-slate-100" />
-              <button onClick={() => { if(newPlayerNick) { onAddPlayer(newPlayerNick); setNewPlayerNick(''); } }} className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 text-white">Add</button>
+              <input 
+                type="text" 
+                value={newPlayerNick} 
+                onChange={(e) => setNewPlayerNick(e.target.value)} 
+                placeholder={editingPlayerId ? "Novo nome..." : "Nick do player..."} 
+                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-blue-500 transition-all text-slate-100" 
+              />
+              {editingPlayerId ? (
+                <div className="flex gap-2">
+                   <button onClick={handleSavePlayerEdit} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-3 rounded-xl font-bold transition-all text-white">Salvar</button>
+                   <button onClick={() => { setEditingPlayerId(null); setNewPlayerNick(''); }} className="bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-xl font-bold transition-all text-slate-300">X</button>
+                </div>
+              ) : (
+                <button onClick={() => { if(newPlayerNick) { onAddPlayer(newPlayerNick); setNewPlayerNick(''); } }} className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 text-white">Add</button>
+              )}
             </div>
             <div className="max-h-56 overflow-y-auto space-y-2 custom-scrollbar pr-2">
               {players.length === 0 && <p className="text-xs text-slate-600 text-center py-4">Nenhum jogador cadastrado.</p>}
               {players.map(p => (
-                <div key={p.id} className="flex justify-between items-center p-3 bg-slate-800/40 rounded-xl border border-slate-700/50 hover:bg-slate-800 transition-all">
+                <div key={p.id} className={`flex justify-between items-center p-3 rounded-xl border transition-all ${editingPlayerId === p.id ? 'bg-blue-900/20 border-blue-500/50' : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800'}`}>
                   <span className="text-slate-200 font-bold">{p.nick}</span>
-                  <button onClick={() => onDeletePlayer(p.id)} className="text-rose-500 p-2 hover:bg-rose-500/10 rounded-lg transition-colors">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
-                  </button>
+                  <div className="flex gap-1">
+                    <button onClick={() => startEditingPlayer(p)} className="text-blue-400 p-2 hover:bg-blue-500/10 rounded-lg transition-colors" title="Renomear">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                    </button>
+                    <button onClick={() => onDeletePlayer(p.id)} className="text-rose-500 p-2 hover:bg-rose-500/10 rounded-lg transition-colors" title="Excluir">
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -218,36 +282,64 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         </div>
 
         <div className="space-y-8">
-          <section className="bg-slate-800 p-8 rounded-3xl border border-slate-700 shadow-2xl relative overflow-hidden h-full">
+          <section className={`bg-slate-800 p-8 rounded-3xl border shadow-2xl relative overflow-hidden h-full transition-colors ${formMode === 'edit' ? 'border-amber-500/30' : 'border-slate-700'}`}>
             {saveSuccess && (
               <div className="absolute inset-0 bg-emerald-600/95 backdrop-blur-md flex flex-col items-center justify-center animate-in zoom-in duration-300 z-30">
                 <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-2xl">
                   <svg className="w-12 h-12 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path></svg>
                 </div>
-                <h4 className="text-2xl font-bold text-white mb-2">Registrado!</h4>
-                <p className="text-emerald-100 mb-8 opacity-80 text-sm text-center">Os dados foram atualizados localmente.</p>
-                <button onClick={() => setSaveSuccess(false)} className="bg-emerald-800 hover:bg-emerald-900 text-white px-8 py-3 rounded-xl font-bold transition-all">Novo Registro</button>
+                <h4 className="text-2xl font-bold text-white mb-2">
+                   {formMode === 'add' ? 'Registrado!' : 'Atualizado!'}
+                </h4>
+                <p className="text-emerald-100 mb-8 opacity-80 text-sm text-center">
+                   {formMode === 'add' ? 'Dados adicionados à soma total.' : 'Dados substituídos com sucesso.'}
+                </p>
+                <button onClick={() => setSaveSuccess(false)} className="bg-emerald-800 hover:bg-emerald-900 text-white px-8 py-3 rounded-xl font-bold transition-all">Continuar</button>
               </div>
             )}
             
-            <h3 className="text-xl font-gaming font-bold mb-8 text-emerald-400 flex items-center gap-3">
-              <span className="w-1.5 h-8 bg-emerald-500 rounded-full"></span>
-              Registrar pontuação
-            </h3>
+            <div className="flex justify-between items-start mb-8">
+              <h3 className={`text-xl font-gaming font-bold flex items-center gap-3 ${formMode === 'edit' ? 'text-amber-400' : 'text-emerald-400'}`}>
+                <span className={`w-1.5 h-8 rounded-full ${formMode === 'edit' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
+                {formMode === 'edit' ? 'Editar Estatísticas' : 'Registrar Pontuação'}
+              </h3>
+
+              <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-700">
+                <button 
+                  onClick={() => setFormMode('add')} 
+                  className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${formMode === 'add' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  SOMAR
+                </button>
+                <button 
+                  onClick={() => setFormMode('edit')} 
+                  className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${formMode === 'edit' ? 'bg-amber-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                  EDITAR
+                </button>
+              </div>
+            </div>
+
+            {formMode === 'edit' && (
+              <div className="mb-6 bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl">
+                <p className="text-amber-200 text-xs font-bold">⚠️ Modo de Edição Ativo</p>
+                <p className="text-amber-400/70 text-[10px] mt-1">Os valores abaixo substituirão o total atual. Use para corrigir erros.</p>
+              </div>
+            )}
             
-            <form onSubmit={handleUpdateStats} className="space-y-8">
+            <form onSubmit={handleSubmitStats} className="space-y-8">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Atleta</label>
                     <select value={selectedPlayerId} onChange={(e) => setSelectedPlayerId(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 outline-none focus:border-emerald-500 transition-all text-slate-200 appearance-none cursor-pointer shadow-inner">
-                      <option value="">Selecione o jogador</option>
+                      <option value="">Selecione o Jogador</option>
                       {players.map(p => <option key={p.id} value={p.id}>{p.nick}</option>)}
                     </select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Temporada</label>
                     <select value={selectedSeasonId} onChange={(e) => setSelectedSeasonId(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 outline-none focus:border-emerald-500 transition-all text-slate-200 appearance-none cursor-pointer shadow-inner">
-                      <option value="">Selecione a temporada</option>
+                      <option value="">Selecione a Temporada</option>
                       {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
@@ -255,45 +347,55 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                
                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Partidas (+)</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{formMode === 'add' ? 'Partidas (+)' : 'Total Partidas'}</label>
                     <input type="number" min="0" value={matchData.matches} onChange={e => setMatchData({...matchData, matches: parseInt(e.target.value) || 0})} className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 text-slate-100 outline-none focus:border-emerald-500 transition-all" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Dano (+)</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{formMode === 'add' ? 'Dano (+)' : 'Total Dano'}</label>
                     <input type="number" min="0" value={matchData.damage} onChange={e => setMatchData({...matchData, damage: parseInt(e.target.value) || 0})} className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 text-slate-100 outline-none focus:border-emerald-500 transition-all" />
                   </div>
                </div>
 
                <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Kills</label>
+                    <label className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">{formMode === 'add' ? 'Kills (+)' : 'Total Kills'}</label>
                     <input type="number" min="0" value={matchData.kills} onChange={e => setMatchData({...matchData, kills: parseInt(e.target.value) || 0})} className="w-full bg-slate-900 border border-emerald-500/20 rounded-2xl p-4 text-emerald-400 font-bold outline-none focus:border-emerald-500 transition-all" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">Deaths</label>
+                    <label className="text-[10px] font-bold text-rose-500 uppercase tracking-widest">{formMode === 'add' ? 'Deaths (+)' : 'Total Deaths'}</label>
                     <input type="number" min="0" value={matchData.deaths} onChange={e => setMatchData({...matchData, deaths: parseInt(e.target.value) || 0})} className="w-full bg-slate-900 border border-rose-500/20 rounded-2xl p-4 text-rose-400 font-bold outline-none focus:border-rose-500 transition-all" />
                   </div>
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">Assists</label>
+                    <label className="text-[10px] font-bold text-sky-500 uppercase tracking-widest">{formMode === 'add' ? 'Assists (+)' : 'Total Assists'}</label>
                     <input type="number" min="0" value={matchData.assists} onChange={e => setMatchData({...matchData, assists: parseInt(e.target.value) || 0})} className="w-full bg-slate-900 border border-sky-500/20 rounded-2xl p-4 text-sky-400 font-bold outline-none focus:border-sky-500 transition-all" />
                   </div>
                </div>
 
-               <button type="submit" disabled={isSaving || !selectedPlayerId || !selectedSeasonId} className="w-full bg-blue-600 hover:bg-blue-500 py-6 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl shadow-blue-600/20 disabled:opacity-30 text-white">
+               <button 
+                type="submit" 
+                disabled={isSaving || !selectedPlayerId || !selectedSeasonId} 
+                className={`w-full py-6 rounded-2xl font-bold text-xl flex items-center justify-center gap-3 transition-all active:scale-95 shadow-xl disabled:opacity-30 text-white
+                  ${formMode === 'add' ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-600/20' : 'bg-amber-600 hover:bg-amber-500 shadow-amber-600/20'}
+                `}
+               >
                   {isSaving ? (
                     <div className="w-7 h-7 border-4 border-white/20 border-t-white rounded-full animate-spin"></div>
                   ) : (
                     <>
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                      Adicionar ao Ranking Local
+                      {formMode === 'add' ? (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                      ) : (
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
+                      )}
+                      {formMode === 'add' ? 'Adicionar ao Ranking Local' : 'Salvar Correção'}
                     </>
                   )}
                </button>
             </form>
 
-            {/*<div className="mt-12 pt-8 border-t border-slate-700/50 flex flex-col gap-4">
+            <div className="mt-12 pt-8 border-t border-slate-700/50 flex flex-col gap-4">
               <button onClick={onResetData} className="w-full bg-rose-950/20 hover:bg-rose-950/40 text-rose-500 border border-rose-900/30 py-4 rounded-xl font-bold transition-all text-xs uppercase tracking-widest">Wipe (Resetar Tudo)</button>
-            </div>*/}
+            </div>
           </section>
         </div>
       </div>

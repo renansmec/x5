@@ -102,8 +102,12 @@ const App: React.FC = () => {
     return currentRanking.filter(p => p.matches >= 3);
   }, [currentRanking]);
 
-  // Admin Actions Handlers
+ // Admin Actions Handlers
   const handleAddPlayer = (nick: string) => setPlayers(prev => [...prev, { id: `p${Date.now()}`, nick }]);
+  
+  const handleEditPlayer = (id: string, newNick: string) => {
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, nick: newNick } : p));
+  };
   
   const handleDeletePlayer = (id: string) => {
     setPlayers(prev => prev.filter(p => p.id !== id));
@@ -142,6 +146,32 @@ const App: React.FC = () => {
       return newStats;
     });
   };
+
+
+
+  // Nova função para sobrescrever dados (Editar/Corrigir)
+  const handleOverwriteStats = (entry: Omit<PlayerStats, 'id'>) => {
+    setStats(prev => {
+      const newStats = [...prev];
+      const idx = newStats.findIndex(s => s.playerId === entry.playerId && s.seasonId === entry.seasonId);
+      if (idx > -1) {
+        // Substitui os valores completamente
+        newStats[idx] = { 
+          ...newStats[idx], 
+          matches: entry.matches,
+          kills: entry.kills,
+          deaths: entry.deaths,
+          assists: entry.assists,
+          damage: entry.damage
+        };
+      } else {
+        // Se não existir, cria
+        newStats.push({ ...entry, id: `st${Date.now()}` });
+      }
+      return newStats;
+    });
+  };
+
 
   const handlePublishToCloud = async () => {
     setIsLoading(true);
@@ -291,8 +321,11 @@ const App: React.FC = () => {
             players={players} seasons={seasons} stats={stats}
             onAddPlayer={handleAddPlayer} onDeletePlayer={handleDeletePlayer}
             onAddSeason={handleAddSeason} onDeleteSeason={handleDeleteSeason}
-            onUpdateStats={handleUpdateStats} onResetData={handleResetData} onSetView={setView}
-            onEditPlayer={() => {}} onEditSeason={() => {}}
+            onUpdateStats={handleUpdateStats} 
+            onOverwriteStats={handleOverwriteStats}
+            onEditPlayer={handleEditPlayer}
+            onResetData={handleResetData} onSetView={setView}
+            onEditSeason={() => {}}
             onPublish={handlePublishToCloud}
           />
         )}
