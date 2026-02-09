@@ -301,7 +301,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             <div className="flex justify-between items-start mb-8">
               <h3 className={`text-xl font-gaming font-bold flex items-center gap-3 ${formMode === 'edit' ? 'text-amber-400' : 'text-emerald-400'}`}>
                 <span className={`w-1.5 h-8 rounded-full ${formMode === 'edit' ? 'bg-amber-500' : 'bg-emerald-500'}`}></span>
-                {formMode === 'edit' ? 'Editar Estatísticas' : 'Registrar Pontuação'}
+                {formMode === 'edit' ? 'Editar estatísticas' : 'Registrar pontuação'}
               </h3>
 
               <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-700">
