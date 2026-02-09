@@ -6,72 +6,13 @@ interface RankingTableProps {
   data: FullRankingEntry[];
 }
 
-// Estende a interface original para incluir os campos calculados localmente
-interface RankingRow extends FullRankingEntry {
-  score: number;
-  patent: string;
-  patentColor: string;
-  patentImage: string;
-}
-
-type SortKey = keyof RankingRow;
+type SortKey = keyof FullRankingEntry;
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
   key: SortKey;
   direction: SortDirection;
 }
-
-// Função para obter a Patente baseada no Score
-const getPatentInfo = (score: number): { label: string; color: string } => {
-  if (score <= 30) return { label: '', color: 'text-slate-400', image: 'https://images.steamusercontent.com/ugc/271719542637737111/E5D752FC990F3BA8C61B4DAD36DAD3AD3C2880FB/' };
-  if (score <= 45) return { label: '', color: 'text-slate-400', image: 'https://images.steamusercontent.com/ugc/271719542637737502/DA712FD82350136686876E99319FA4F3013670FE/' };
-  if (score <= 60) return { label: 'Prata III', color: 'text-slate-300', image: 'https://images.steamusercontent.com/ugc/271719542637737895/5A95E18A1DFDBFFDE14B755DA2292BD066DC1A2A/' };
-  if (score <= 75) return { label: 'Prata IV', color: 'text-slate-300', image: 'https://images.steamusercontent.com/ugc/271719542637738317/A51B1B1A10DFB1A7C15EC7408A69CE122FD1B813/' };
-  if (score <= 90) return { label: 'Prata Elite', color: 'text-slate-200', image: '3https://images.steamusercontent.com/ugc/271719542637748144/BA9D7AF20B38560497BE4AA1E162CEAFAB1D875B/' };
-  if (score <= 100) return { label: 'Prata Elite Mestre', color: 'text-slate-100', image: 'https://images.steamusercontent.com/ugc/271719542637749101/60A2DCC2B8ED2966CC7B356BFC83EBFE015B48A5/' };
-  
-  if (score <= 300) return { label: 'Ouro I', color: 'text-yellow-600', image: 'https://images.steamusercontent.com/ugc/271719542637749917/D48D04EF6C33A5AB14DBC7CFFE6A33E1C0B16990/' };
-  if (score <= 500) return { label: 'Ouro II', color: 'text-yellow-500', image: 'https://images.steamusercontent.com/ugc/271719542637750154/4A7542CEC239EB63BA73443E79F2583257C2661E/' }; 
-  if (score <= 700) return { label: 'Ouro III', color: 'text-yellow-400', image: 'https://images.steamusercontent.com/ugc/271719542637750367/5CE20907BD84F5AF8C1201D3395F324C46E61C33/' };
-  if (score <= 900) return { label: 'Ouro Mestre', color: 'text-yellow-300', image: 'https://images.steamusercontent.com/ugc/271719542637750595/9CE0E1BACB20382FD7F39936C0430FE33EBD8D40/' };
-  
-  if (score <= 1150) return { label: 'Mestre Guardião I', color: 'text-blue-400', image: 'https://images.steamusercontent.com/ugc/271719542637750828/F1ED0112981F38EF7C4A06751C616E4336EC313A/' }; // AK I
-  if (score <= 1400) return { label: 'Mestre Guardião II', color: 'text-blue-500', image: 'https://images.steamusercontent.com/ugc/271719542637751051/92BED3494C63F3B87A8DF44BECC2929BD80C0BD1/' }; // AK II
-  if (score <= 1650) return { label: 'Mestre Guardião Elite', color: 'text-blue-600', image: 'https://images.steamusercontent.com/ugc/271719542637751306/4C585D32170F83C489CC3CA06FDF977C951E9CCB/' }; // AK Elite
-  if (score <= 1900) return { label: 'Distinto Mestre Guardião', color: 'text-indigo-400', image: 'https://images.steamusercontent.com/ugc/271719542637751587/2272F38DA9B1A3A3894EEA08E8E864306E070601/' }; // AK Cruzada
-  
-  if (score <= 2200) return { label: 'Guardião Lendário', color: 'text-purple-400', image: 'https://images.steamusercontent.com/ugc/271719542637751587/2272F38DA9B1A3A3894EEA08E8E864306E070601/' }; // Xerife
-  if (score <= 2500) return { label: 'Águia Lendária', color: 'text-purple-300', image: 'https://images.steamusercontent.com/ugc/271719542637751832/8FE33BB2E3C2DA906C3D2BED5306B130B3F21935/' };
-  if (score <= 2800) return { label: 'Águia Lendária Mestre', color: 'text-purple-200', image: 'https://images.steamusercontent.com/ugc/271719542637752050/FFAB325D97A712B4C587788494391D05B9C1E1CE/' };
-  if (score <= 3200) return { label: 'Supremo Mestre', color: 'text-pink-400', image: 'https://images.steamusercontent.com/ugc/271719542637752364/9239E876A15EA2E3153D708529C6C4FB102B5D43/' };
-  
-  return { label: 'Global Elite', color: 'text-red-500 animate-pulse', image: 'https://images.steamusercontent.com/ugc/271719542637752589/1362813B1F6CBE2C8DF3FA19EB629EA13E14CC0A/' };
-};
-
-const calculateScore = (player: FullRankingEntry): number => {
-  if (player.matches === 0) return 0;
-
-  // 1. Calcular métricas brutas
-  const rawKD = player.deaths === 0 ? player.kills : player.kills / player.deaths;
-  const rawKPM = player.kills / player.matches;
-  const rawAPM = player.assists / player.matches;
-
-  // 2. Aplicar limites máximos (Caps)
-  const cappedKD = Math.min(rawKD, 2.5);
-  const cappedKPM = Math.min(rawKPM, 1.5);
-  const cappedAPM = Math.min(rawAPM, 1.2);
-
-  // 3. Fórmula do score
-  // Score = (KD * 400) + (KPM * 250) + (APM * 150) + (log10(partidas) * 100)
-  const score = 
-    (cappedKD * 400) + 
-    (cappedKPM * 250) + 
-    (cappedAPM * 150) + 
-    (Math.log10(player.matches) * 100);
-
-  return Math.round(score);
-};
 
 const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
   // Estado padrão: Ordenado por KD descendente (maior para o menor)
@@ -88,29 +29,13 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
   };
 
   const sortedData = useMemo(() => {
-    // 1. Enriquecer os dados com Score e Patente
-    const processedData: RankingRow[] = data.map(player => {
-      const score = calculateScore(player);
-      const { label, color, image } = getPatentInfo(score);
-return {
-  ...player,
-  score,
-  patent: label,
-  patentColor: color,
-  patentImage: image
-};
-    });
-
-    // 2. Filtra jogadores com menos de 3 partidas
-    const filtered = processedData.filter(player => player.matches >= 3);
+    // Filtra jogadores com menos de 3 partidas antes de ordenar
+    const filtered = data.filter(player => player.matches >= 3);
+    const sorted = [...filtered];
     
-    // 3. Ordena
-    return filtered.sort((a, b) => {
-      // Tratamento especial para patente (ordenar por score quando clicar em patente)
-      const key = sortConfig.key === 'patent' ? 'score' : sortConfig.key;
-      
-      const aValue = a[key];
-      const bValue = b[key];
+    return sorted.sort((a, b) => {
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
 
       if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
@@ -161,19 +86,18 @@ return {
           <tr>
             <th className="px-6 py-4 text-slate-500 w-16">#</th>
             {renderHeader("Nick", "nick", "text-slate-300")}
-            {renderHeader("Patente", "patent", "text-purple-400", "text-left", "Baseado em Score (K/D, KPM, APM e Partidas)")}
-
-            {renderHeader("Partidas", "matches", "text-slate-300", "text-center")}
-            {renderHeader("K/D", "kd", "text-yellow-400", "text-center")}
-            {renderHeader("Kills", "kills", "text-emerald-400", "text-center")}
-            {renderHeader("Assists", "assists", "text-sky-400", "text-center")}
-            {renderHeader("Dano", "damage", "text-orange-400", "text-right")}
+            {renderHeader("Partidas", "matches", "text-slate-300")}
+            {renderHeader("Vítimas", "kills", "text-emerald-400")}
+            {renderHeader("Mortes", "deaths", "text-rose-400")}
+            {renderHeader("Assists", "assists", "text-sky-400")}
+            {renderHeader("Dano", "damage", "text-orange-400")}
+            {renderHeader("K/D", "kd", "text-yellow-400", "text-left", "Cálculo: Vítimas / Mortes")}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-700">
           {sortedData.length === 0 ? (
             <tr>
-              <td colSpan={9} className="px-6 py-10 text-center text-slate-500 italic">
+              <td colSpan={8} className="px-6 py-10 text-center text-slate-500 italic">
                 {data.length > 0 
                   ? "Nenhum jogador elegível (mínimo 3 partidas)."
                   : "Nenhum dado encontrado para esta temporada."}
@@ -199,37 +123,22 @@ return {
                 <td className="px-6 py-4 font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
                   {player.nick}
                 </td>
-                <td className="px-6 py-4">
-  <div className="flex items-center gap-3">
-    <img
-      src={player.patentImage}
-      alt={player.patent}
-      className="w-8 h-8 object-contain"
-      loading="lazy"
-    />
-    <span className={`font-gaming font-bold tracking-wide ${player.patentColor}`}>
-      {player.patent}
-    </span>
-  </div>
-</td>
-                <td className="px-6 py-4 text-slate-500 font-mono text-xs text-right">
-                  {player.score}
+                <td className="px-6 py-4 text-slate-300">{player.matches}</td>
+                <td className="px-6 py-4 text-emerald-400 font-medium">{player.kills}</td>
+                <td className="px-6 py-4 text-rose-400 font-medium">{player.deaths}</td>
+                <td className="px-6 py-4 text-sky-400">{player.assists}</td>
+                <td className="px-6 py-4 text-orange-400 font-medium">
+                  {player.damage.toLocaleString('pt-BR')}
                 </td>
-                <td className="px-6 py-4 text-slate-300 text-center">{player.matches}</td>
-                <td className="px-6 py-4 text-center">
+                <td className="px-6 py-4">
                   <span className={`
                     px-2 py-1 rounded font-bold
-                    ${player.kd >= 1.5 ? 'bg-emerald-500/20 text-emerald-400' : 
+                    ${player.kd >= 2.5 ? 'bg-emerald-500/20 text-emerald-400' : 
                       player.kd >= 1.0 ? 'bg-blue-500/20 text-blue-400' : 
                       'bg-rose-500/20 text-rose-400'}
                   `}>
                     {player.kd.toFixed(2)}
                   </span>
-                </td>
-                <td className="px-6 py-4 text-emerald-400 font-medium text-center">{player.kills}</td>
-                <td className="px-6 py-4 text-sky-400 text-center">{player.assists}</td>
-                <td className="px-6 py-4 text-orange-400 font-medium text-right">
-                  {player.damage.toLocaleString('pt-BR')}
                 </td>
               </tr>
             ))
