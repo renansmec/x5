@@ -141,11 +141,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`}></div>
-            Status da Nuvem: {isConnected ? <span className="text-emerald-500">Conectado ao Supabase</span> : <span className="text-rose-500">Desconectado / Local</span>}
+            Status da Nuvem: {isConnected ? <span className="text-emerald-500">Conectado ao bando de dados</span> : <span className="text-rose-500">Desconectado / Local</span>}
           </h3>
-          <button onClick={() => setShowConfig(!showConfig)} className="text-xs text-blue-400 hover:underline bg-slate-800 px-3 py-1 rounded-lg">
+{/*          <button onClick={() => setShowConfig(!showConfig)} className="text-xs text-blue-400 hover:underline bg-slate-800 px-3 py-1 rounded-lg">
             {showConfig ? 'Ocultar Configuração' : '⚙️ Configurar Conexão'}
-          </button>
+          </button>*/}
         </div>
         
         {!isConnected && (
@@ -200,7 +200,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {isConnected ? (
         <div className="bg-emerald-600/10 border border-emerald-500/20 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
            <div>
-             <h4 className="text-emerald-400 font-bold">Publicar Dados</h4>
+             <h4 className="text-emerald-400 font-bold">Publicar dados</h4>
              <p className="text-xs text-slate-400">Envia as alterações locais para o banco de dados oficial.</p>
            </div>
            <button onClick={onPublish} className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 text-white">
@@ -220,7 +220,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <section className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
             <h3 className="text-lg font-bold mb-6 text-blue-400 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-              Gerenciar Jogadores
+              Gerenciar jogadores
             </h3>
             <div className="flex gap-2 mb-6">
               <input 
@@ -261,7 +261,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           <section className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
             <h3 className="text-lg font-bold mb-6 text-purple-400 flex items-center gap-2">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-              Gerenciar Temporadas
+              Gerenciar temporadas
             </h3>
             <div className="flex gap-2 mb-6">
               <input type="text" value={newSeasonName} onChange={(e) => setNewSeasonName(e.target.value)} placeholder="Nome da Season..." className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-purple-500 transition-all text-slate-100" />
@@ -339,7 +339,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Temporada</label>
                     <select value={selectedSeasonId} onChange={(e) => setSelectedSeasonId(e.target.value)} required className="w-full bg-slate-900 border border-slate-700 rounded-2xl p-4 outline-none focus:border-emerald-500 transition-all text-slate-200 appearance-none cursor-pointer shadow-inner">
-                      <option value="">Selecione a Temporada</option>
+                      <option value="">Selecione a temporada</option>
                       {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   </div>
@@ -387,7 +387,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       ) : (
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg>
                       )}
-                      {formMode === 'add' ? 'Adicionar ao Ranking Local' : 'Salvar Correção'}
+                      {formMode === 'add' ? 'Adicionar ao ranking local' : 'Salvar correção'}
                     </>
                   )}
                </button>
