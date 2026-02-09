@@ -143,7 +143,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
            <select 
              value={selectedSeasonId} 
              onChange={(e) => { setSelectedSeasonId(e.target.value); setResultTeams(null); }} 
-             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 shadow-xl"
+             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
            >
              {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
            </select>
@@ -153,7 +153,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
            <select 
              value={numTeams} 
              onChange={handleNumTeamsChange} 
-             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-blue-500 shadow-xl"
+             className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
            >
              <option value={2}>2 times (10 jogadores)</option>
              <option value={3}>3 times (15 jogadores)</option>
@@ -194,7 +194,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
                 >
                   <div className="flex justify-between items-start">
                     <span className={`font-bold truncate pr-2 ${isSelected ? 'text-white' : 'text-slate-300'}`}>{player.nick}</span>
-                    <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-emerald-800 text-emerald-200' : 'bg-slate-900 text-slate-500'}`}>
+                    <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-purple-800 text-purple-200' : 'bg-slate-900 text-slate-500'}`}>
                       {player.kd.toFixed(2)}
                     </span>
                   </div>
