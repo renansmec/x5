@@ -187,7 +187,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
                   className={`
                     relative p-3 rounded-xl border text-left transition-all group
                     ${isSelected 
-                      ? 'bg-purple-600 border-blue-500 shadow-lg shadow-purple-900/50 scale-105 z-10' 
+                      ? 'bg-purple-600 border-slate-500 shadow-lg shadow-purple-900/50 scale-105 z-10' 
                       : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-750'}
                     ${!isSelected && selectedPlayerIds.length >= totalPlayersNeeded ? 'opacity-40 cursor-not-allowed' : ''}
                   `}
