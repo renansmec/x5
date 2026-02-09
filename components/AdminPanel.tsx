@@ -92,11 +92,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
             <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-purple-500 animate-pulse' : 'bg-rose-500'}`}></div>
-            Status da Nuvem: {isConnected ? <span className="text-emerald-500">Conectado ao Supabase</span> : <span className="text-rose-500">Desconectado / Local</span>}
+            Status da Nuvem: {isConnected ? <span className="text-emerald-500">Conectado ao servidor</span> : <span className="text-rose-500">Desconectado / Local</span>}
           </h3>
-          <button onClick={() => setShowConfig(!showConfig)} className="text-xs text-blue-400 hover:underline bg-slate-800 px-3 py-1 rounded-lg">
+         {/* <button onClick={() => setShowConfig(!showConfig)} className="text-xs text-blue-400 hover:underline bg-slate-800 px-3 py-1 rounded-lg">
             {showConfig ? 'Ocultar Configuração' : '⚙️ Configurar Conexão'}
-          </button>
+          </button>*/}
         </div>
         
         {!isConnected && (
