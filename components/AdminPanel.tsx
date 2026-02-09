@@ -322,7 +322,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
 
             {formMode === 'edit' && (
               <div className="mb-6 bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl">
-                <p className="text-amber-200 text-xs font-bold">⚠️ Modo de Edição Ativo</p>
+                <p className="text-amber-200 text-xs font-bold">⚠️ Modo de edição ativo</p>
                 <p className="text-amber-400/70 text-[10px] mt-1">Os valores abaixo substituirão o total atual. Use para corrigir erros.</p>
               </div>
             )}
