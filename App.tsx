@@ -8,7 +8,11 @@ import { db } from './services/databaseService';
 import { getRankingInsights } from './services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-const ADMIN_PASSWORD = "x5admin2024";
+// Configuração de Senhas e Níveis
+const AUTH_CONFIG = {
+  MASTER_PASSWORD: "x5root2025",  // NOVA Senha Master (Permissão Total + Configs)
+  EDITOR_PASSWORD: "x5admin2024"  // ANTIGA Senha Master -> Agora Editor (Apenas Stats/Add Player)
+};
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewType>('ranking');
@@ -313,6 +317,9 @@ const App: React.FC = () => {
                 className={`w-full bg-slate-800 border ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-xl px-4 py-4 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 transition-all`}
                 autoFocus 
               />
+              <div className="text-xs text-slate-500 text-center">
+                 <p className="mb-1">Admin Master (Root) ou Editor (x5admin2024)</p>
+              </div>
               <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 py-4 rounded-xl font-bold shadow-lg transition-all">Acessar Painel</button>
             </form>
           </div>
