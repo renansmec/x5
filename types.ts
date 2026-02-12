@@ -24,6 +24,8 @@ export interface FullRankingEntry extends PlayerStats {
   nick: string;
   kd: number;
   damagePerMatch: number;
+  trend?: number; // Diferença de posição: >0 (Subiu), <0 (Desceu), 0 (Igual), undefined (Novo)
+
 }
 
 export type ViewType = 'ranking' | 'admin' | 'balancer';

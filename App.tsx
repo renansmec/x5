@@ -27,6 +27,10 @@ const App: React.FC = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
+
+  // Estado para armazenar o snapshot anterior do ranking (para comparar subidas/descidas)
+  const [rankingSnapshot, setRankingSnapshot] = useState<FullRankingEntry[]>([]);
+
   // Busca dados automaticamente ao carregar
   const fetchData = async () => {
     setIsLoading(true);
@@ -59,6 +63,25 @@ const App: React.FC = () => {
     fetchData();
   }, []);
 
+
+
+  // Carrega o snapshot do LocalStorage quando a temporada muda
+  useEffect(() => {
+    if (selectedSeasonId) {
+      const savedSnapshot = localStorage.getItem(`x5_rank_snap_${selectedSeasonId}`);
+      if (savedSnapshot) {
+        try {
+          setRankingSnapshot(JSON.parse(savedSnapshot));
+        } catch (e) {
+          setRankingSnapshot([]);
+        }
+      } else {
+        setRankingSnapshot([]);
+      }
+    }
+  }, [selectedSeasonId]);
+
+
   const handleAdminLogin = (e: React.FormEvent) => {
     e.preventDefault();
     if (adminPasswordInput === ADMIN_PASSWORD) {
@@ -82,7 +105,7 @@ const App: React.FC = () => {
   const currentRanking: FullRankingEntry[] = useMemo(() => {
     if (!selectedSeasonId) return [];
     
-    return stats
+   
       .filter(s => s.seasonId === selectedSeasonId)
       .map(s => {
         const player = players.find(p => p.id === s.playerId);
@@ -96,6 +119,79 @@ const App: React.FC = () => {
       })
       .sort((a, b) => b.kd - a.kd);
   }, [stats, selectedSeasonId, players]);
+
+
+  // Calcula Ranking Atual + Tendência (Trend)
+  const currentRanking: FullRankingEntry[] = useMemo(() => {
+    if (!selectedSeasonId) return [];
+    
+    // 1. Calcula Ranking Base
+    const rawRanking = stats
+      .filter(s => s.seasonId === selectedSeasonId)
+      .map(s => {
+        const player = players.find(p => p.id === s.playerId);
+        const kdValue = s.deaths === 0 ? s.kills : s.kills / s.deaths;
+        return {
+          ...s,
+          nick: player?.nick || 'Desconhecido',
+          kd: kdValue,
+          damagePerMatch: s.matches === 0 ? 0 : s.damage / s.matches
+        };
+      })
+      .sort((a, b) => {
+        // Ordenação primária KD
+        if (b.kd !== a.kd) return b.kd - a.kd;
+        // Desempate por Kills
+        return b.kills - a.kills;
+      });
+
+    // 2. Calcula Tendências comparando com rankingSnapshot
+    // Só calculamos tendência para jogadores com 3+ partidas (os que aparecem no ranking oficial)
+    const activePlayers = rawRanking.filter(p => p.matches >= 3);
+    
+    // Mapa de posições antigas
+    const prevPositions = new Map<string, number>();
+    if (rankingSnapshot.length > 0) {
+       // O snapshot já deve estar ordenado e filtrado
+       rankingSnapshot.forEach((p, index) => {
+         prevPositions.set(p.playerId, index);
+       });
+    }
+
+    // Injeta a tendência nos dados atuais
+    return rawRanking.map((player) => {
+      // Se o jogador não tem partidas suficientes, não tem rank, logo não tem trend visual
+      if (player.matches < 3) return { ...player, trend: 0 };
+
+      const currentIndex = activePlayers.findIndex(p => p.playerId === player.playerId);
+      const prevIndex = prevPositions.get(player.playerId);
+
+      let trend = 0;
+      if (prevIndex !== undefined && currentIndex !== -1) {
+        // Ex: Estava em 5º (4), agora em 2º (1). Trend = 4 - 1 = 3 (Subiu 3)
+        trend = prevIndex - currentIndex;
+      } else if (prevIndex === undefined && currentIndex !== -1 && rankingSnapshot.length > 0) {
+        // Entrou no ranking agora (novo)
+        trend = 999; 
+      }
+
+      return { ...player, trend };
+    });
+
+  }, [stats, selectedSeasonId, players, rankingSnapshot]);
+
+  // Salva o novo estado no LocalStorage (mas não atualiza rankingSnapshot para não perder a referência visual da sessão)
+  useEffect(() => {
+    if (currentRanking.length > 0 && selectedSeasonId) {
+      const activeOnly = currentRanking.filter(p => p.matches >= 3);
+      // Pequeno delay para garantir que não estamos salvando lixo ou estados intermediários
+      const timer = setTimeout(() => {
+         localStorage.setItem(`x5_rank_snap_${selectedSeasonId}`, JSON.stringify(activeOnly));
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [currentRanking, selectedSeasonId]);
+
 
   // Filtra dados para o gráfico (apenas jogadores com 3+ partidas)
   const chartData = useMemo(() => {
