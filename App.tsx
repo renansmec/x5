@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ViewType, Player, Season, PlayerStats, FullRankingEntry } from './types';
+import { ViewType, Player, Season, PlayerStats, FullRankingEntry, UserRole } from './types';
 import RankingTable from './components/RankingTable';
 import AdminPanel from './components/AdminPanel';
 import TeamBalancer from './components/TeamBalancer';
@@ -8,12 +8,18 @@ import { db } from './services/databaseService';
 import { getRankingInsights } from './services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-const ADMIN_PASSWORD = "x5admin2024";
+// Configuração de Senhas e Níveis
+const AUTH_CONFIG = {
+  MASTER_PASSWORD: "x5root2025",  // NOVA Senha Master (Permissão Total + Configs)
+  EDITOR_PASSWORD: "x5admin2024"  // ANTIGA Senha Master -> Agora Editor (Apenas Stats/Add Player)
+};
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewType>('ranking');
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('x5_is_admin') === 'true';
+  
+  // Estado de Autenticação com Role
+  const [userRole, setUserRole] = useState<UserRole>(() => {
+    return (sessionStorage.getItem('x5_user_role') as UserRole) || null;
   });
   
   const [players, setPlayers] = useState<Player[]>([]);
@@ -26,10 +32,6 @@ const App: React.FC = () => {
   const [loadingAi, setLoadingAi] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
-
-
-  // Estado para armazenar o snapshot anterior do ranking (para comparar subidas/descidas)
-  const [rankingSnapshot, setRankingSnapshot] = useState<FullRankingEntry[]>([]);
 
   // Busca dados automaticamente ao carregar
   const fetchData = async () => {
@@ -63,35 +65,29 @@ const App: React.FC = () => {
     fetchData();
   }, []);
 
-
-
-  // Carrega o snapshot do LocalStorage quando a temporada muda
-  useEffect(() => {
-    if (selectedSeasonId) {
-      const savedSnapshot = localStorage.getItem(`x5_rank_snap_${selectedSeasonId}`);
-      if (savedSnapshot) {
-        try {
-          setRankingSnapshot(JSON.parse(savedSnapshot));
-        } catch (e) {
-          setRankingSnapshot([]);
-        }
-      } else {
-        setRankingSnapshot([]);
-      }
-    }
-  }, [selectedSeasonId]);
-
-
-  const handleAdminLogin = (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (adminPasswordInput === ADMIN_PASSWORD) {
-      setIsAdminAuthenticated(true);
-      sessionStorage.setItem('x5_is_admin', 'true');
+    
+    if (adminPasswordInput === AUTH_CONFIG.MASTER_PASSWORD) {
+      setUserRole('master');
+      sessionStorage.setItem('x5_user_role', 'master');
+      setLoginError(false);
+      setAdminPasswordInput('');
+    } else if (adminPasswordInput === AUTH_CONFIG.EDITOR_PASSWORD) {
+      setUserRole('editor');
+      sessionStorage.setItem('x5_user_role', 'editor');
       setLoginError(false);
       setAdminPasswordInput('');
     } else {
       setLoginError(true);
+      setUserRole(null);
     }
+  };
+
+  const handleLogout = () => {
+    setUserRole(null);
+    sessionStorage.removeItem('x5_user_role');
+    setView('ranking');
   };
 
   const handleResetData = async () => {
@@ -105,7 +101,7 @@ const App: React.FC = () => {
   const currentRanking: FullRankingEntry[] = useMemo(() => {
     if (!selectedSeasonId) return [];
     
-   
+    return stats
       .filter(s => s.seasonId === selectedSeasonId)
       .map(s => {
         const player = players.find(p => p.id === s.playerId);
@@ -120,85 +116,12 @@ const App: React.FC = () => {
       .sort((a, b) => b.kd - a.kd);
   }, [stats, selectedSeasonId, players]);
 
-
-  // Calcula Ranking Atual + Tendência (Trend)
-  const currentRanking: FullRankingEntry[] = useMemo(() => {
-    if (!selectedSeasonId) return [];
-    
-    // 1. Calcula Ranking Base
-    const rawRanking = stats
-      .filter(s => s.seasonId === selectedSeasonId)
-      .map(s => {
-        const player = players.find(p => p.id === s.playerId);
-        const kdValue = s.deaths === 0 ? s.kills : s.kills / s.deaths;
-        return {
-          ...s,
-          nick: player?.nick || 'Desconhecido',
-          kd: kdValue,
-          damagePerMatch: s.matches === 0 ? 0 : s.damage / s.matches
-        };
-      })
-      .sort((a, b) => {
-        // Ordenação primária KD
-        if (b.kd !== a.kd) return b.kd - a.kd;
-        // Desempate por Kills
-        return b.kills - a.kills;
-      });
-
-    // 2. Calcula Tendências comparando com rankingSnapshot
-    // Só calculamos tendência para jogadores com 3+ partidas (os que aparecem no ranking oficial)
-    const activePlayers = rawRanking.filter(p => p.matches >= 3);
-    
-    // Mapa de posições antigas
-    const prevPositions = new Map<string, number>();
-    if (rankingSnapshot.length > 0) {
-       // O snapshot já deve estar ordenado e filtrado
-       rankingSnapshot.forEach((p, index) => {
-         prevPositions.set(p.playerId, index);
-       });
-    }
-
-    // Injeta a tendência nos dados atuais
-    return rawRanking.map((player) => {
-      // Se o jogador não tem partidas suficientes, não tem rank, logo não tem trend visual
-      if (player.matches < 3) return { ...player, trend: 0 };
-
-      const currentIndex = activePlayers.findIndex(p => p.playerId === player.playerId);
-      const prevIndex = prevPositions.get(player.playerId);
-
-      let trend = 0;
-      if (prevIndex !== undefined && currentIndex !== -1) {
-        // Ex: Estava em 5º (4), agora em 2º (1). Trend = 4 - 1 = 3 (Subiu 3)
-        trend = prevIndex - currentIndex;
-      } else if (prevIndex === undefined && currentIndex !== -1 && rankingSnapshot.length > 0) {
-        // Entrou no ranking agora (novo)
-        trend = 999; 
-      }
-
-      return { ...player, trend };
-    });
-
-  }, [stats, selectedSeasonId, players, rankingSnapshot]);
-
-  // Salva o novo estado no LocalStorage (mas não atualiza rankingSnapshot para não perder a referência visual da sessão)
-  useEffect(() => {
-    if (currentRanking.length > 0 && selectedSeasonId) {
-      const activeOnly = currentRanking.filter(p => p.matches >= 3);
-      // Pequeno delay para garantir que não estamos salvando lixo ou estados intermediários
-      const timer = setTimeout(() => {
-         localStorage.setItem(`x5_rank_snap_${selectedSeasonId}`, JSON.stringify(activeOnly));
-      }, 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [currentRanking, selectedSeasonId]);
-
-
   // Filtra dados para o gráfico (apenas jogadores com 3+ partidas)
   const chartData = useMemo(() => {
     return currentRanking.filter(p => p.matches >= 3);
   }, [currentRanking]);
 
- // Admin Actions Handlers
+  // Admin Actions Handlers
   const handleAddPlayer = (nick: string) => setPlayers(prev => [...prev, { id: `p${Date.now()}`, nick }]);
   
   const handleEditPlayer = (id: string, newNick: string) => {
@@ -243,15 +166,11 @@ const App: React.FC = () => {
     });
   };
 
-
-
-  // Nova função para sobrescrever dados (Editar/Corrigir)
   const handleOverwriteStats = (entry: Omit<PlayerStats, 'id'>) => {
     setStats(prev => {
       const newStats = [...prev];
       const idx = newStats.findIndex(s => s.playerId === entry.playerId && s.seasonId === entry.seasonId);
       if (idx > -1) {
-        // Substitui os valores completamente
         newStats[idx] = { 
           ...newStats[idx], 
           matches: entry.matches,
@@ -261,18 +180,15 @@ const App: React.FC = () => {
           damage: entry.damage
         };
       } else {
-        // Se não existir, cria
         newStats.push({ ...entry, id: `st${Date.now()}` });
       }
       return newStats;
     });
   };
 
-
   const handlePublishToCloud = async () => {
     setIsLoading(true);
     try {
-      // Usa o novo método sincronizado que evita erros de Foreign Key
       await db.syncDatabase(players, seasons, stats);
       alert("✅ Dados sincronizados com sucesso!");
     } catch (e: any) {
@@ -295,7 +211,7 @@ const App: React.FC = () => {
   if (isLoading && view === 'ranking' && players.length === 0) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-400 font-gaming">
-        <div className="w-12 h-12 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+        <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4"></div>
         <p className="text-sm tracking-widest uppercase opacity-50">Carregando X5 Ranking...</p>
       </div>
     );
@@ -306,20 +222,27 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-50 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-6 py-4 shadow-xl">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => { setView('ranking'); fetchData(); }}>
-            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg bg-gradient-to-r from-purple-700 to-purple-400">X5</div>
+            <div className="w-10 h-10 bg-emerald-600 rounded-lg flex items-center justify-center font-gaming text-2xl font-bold italic shadow-lg shadow-emerald-500/20">X5</div>
             <div className="hidden sm:block">
-              <h1 className="text-xl font-gaming font-bold tracking-tight bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                DOS AMIGOS
+              <h1 className="text-xl font-gaming font-bold tracking-tight bg-gradient-to-r from-emerald-400 to-blue-400 bg-clip-text text-transparent">
+                RANKING AMIGOS
               </h1>
-              
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter">
+                Estatísticas em Tempo Real
+              </span>
             </div>
           </div>
           
           <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700 overflow-x-auto">
-            <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'ranking' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
-            <button onClick={() => setView('balancer')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'balancer' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Sortear times</button>
-            <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'admin' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>
-
+            <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'ranking' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
+            <button onClick={() => setView('balancer')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'balancer' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Sorteio Teams</button>
+            <button onClick={() => setView('skins')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'skins' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Skins</button>
+            <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'admin' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>
+            {userRole && (
+               <button onClick={handleLogout} className="px-3 py-2 text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded-lg font-bold text-xs" title="Sair do modo Admin">
+                 SAIR
+               </button>
+            )}
           </nav>
         </div>
       </header>
@@ -329,17 +252,19 @@ const App: React.FC = () => {
           <div className="space-y-8 animate-in fade-in duration-500">
              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
                 <div className="w-full md:w-auto">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Selecione a temporada</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 block">Selecione a Temporada</label>
                   <select 
                     value={selectedSeasonId} 
                     onChange={(e) => setSelectedSeasonId(e.target.value)} 
-                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-xl"
+                    className="w-full md:w-72 bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 shadow-xl"
                   >
                     {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     {seasons.length === 0 && <option value="">Nenhuma temporada encontrada</option>}
                   </select>
                 </div>
-               
+                <button onClick={generateAICommentary} disabled={loadingAi || currentRanking.length === 0} className="w-full md:w-auto flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-blue-600 px-8 py-4 rounded-xl font-bold shadow-2xl transition-all disabled:opacity-50">
+                  {loadingAi ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : "✨ Analisar com Gemini"}
+                </button>
              </div>
 
              {aiInsight && (
@@ -359,19 +284,16 @@ const App: React.FC = () => {
                           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                           <XAxis dataKey="nick" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
                           <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }} 
-                          itemStyle={{ color: '#d6d6d6' }}/>
-
+                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }} />
                           <Bar dataKey="kd" radius={[6, 6, 0, 0]} barSize={40}>
-
-                             {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.kd >= 2.5 ? '#10b981' : entry.kd >= 1.0 ? '#3b82f6' : '#f43f5e'} />)}
+                             {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.kd >= 1.5 ? '#10b981' : entry.kd >= 1.0 ? '#3b82f6' : '#f43f5e'} />)}
                           </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                    </div>
                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center items-center text-center shadow-xl">
                       <div className="mb-6">
-                        <p className="text-slate-500 uppercase text-xs font-bold mb-1">Kills total</p>
+                        <p className="text-slate-500 uppercase text-xs font-bold mb-1">Kills</p>
                         <p className="text-5xl font-gaming font-bold text-emerald-400">
                           {currentRanking.reduce((acc, curr) => acc + curr.kills, 0)}
                         </p>
@@ -397,23 +319,39 @@ const App: React.FC = () => {
           </div>
         ) : view === 'balancer' ? (
           <TeamBalancer players={players} seasons={seasons} stats={stats} />
-        ) : !isAdminAuthenticated ? (
+        ) : view === 'skins' ? (
+          <div className="w-full h-[80vh] bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in duration-500 relative">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+               <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <iframe 
+              src="http://187.103.16.34" 
+              className="w-full h-full border-0 relative z-10 bg-slate-900"
+              title="Skins"
+              allowFullScreen
+            />
+          </div>
+        ) : !userRole ? (
           <div className="max-w-md mx-auto mt-20 p-10 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl animate-in zoom-in-95">
-            <h2 className="text-2xl font-gaming font-bold text-center mb-6 text-purple-400">Autenticação master</h2>
-            <form onSubmit={handleAdminLogin} className="space-y-4">
+            <h2 className="text-2xl font-gaming font-bold text-center mb-6 text-emerald-400">Acesso Restrito</h2>
+            <form onSubmit={handleLogin} className="space-y-4">
               <input 
                 type="password" 
                 value={adminPasswordInput} 
                 onChange={(e) => {setAdminPasswordInput(e.target.value); setLoginError(false);}} 
                 placeholder="Senha de Acesso" 
-                className={`w-full bg-slate-800 border ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-xl px-4 py-4 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 transition-all`}
+                className={`w-full bg-slate-800 border ${loginError ? 'border-rose-500' : 'border-slate-700'} rounded-xl px-4 py-4 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-emerald-500 transition-all`}
                 autoFocus 
               />
-              <button type="submit" className="w-full bg-purple-600 hover:bg-purple-700 py-4 rounded-xl font-bold shadow-lg transition-all">Acessar Painel</button>
+              <div className="text-xs text-slate-500 text-center">
+                 <p className="mb-1">Admin Master (Root) ou Editor (x5admin2024)</p>
+              </div>
+              <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 py-4 rounded-xl font-bold shadow-lg transition-all">Entrar no Painel</button>
             </form>
           </div>
         ) : (
           <AdminPanel 
+            role={userRole}
             players={players} seasons={seasons} stats={stats}
             onAddPlayer={handleAddPlayer} onDeletePlayer={handleDeletePlayer}
             onAddSeason={handleAddSeason} onDeleteSeason={handleDeleteSeason}
@@ -429,7 +367,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 dos Amigos &bull; SEASON 4
+          X5 Friends Ranking &bull; Dados em Nuvem
         </p>
       </footer>
     </div>
