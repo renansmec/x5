@@ -318,6 +318,8 @@ const App: React.FC = () => {
           <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700 overflow-x-auto">
             <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'ranking' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
             <button onClick={() => setView('balancer')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'balancer' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Sortear times</button>
+                        <button onClick={() => setView('skins')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'skins' ? 'bg-emerald-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Skins</button>
+
             <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'admin' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>
 
           </nav>
@@ -397,6 +399,18 @@ const App: React.FC = () => {
           </div>
         ) : view === 'balancer' ? (
           <TeamBalancer players={players} seasons={seasons} stats={stats} />
+                  ) : view === 'skins' ? (
+          <div className="w-full h-[80vh] bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-2xl animate-in fade-in duration-500 relative">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+               <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <iframe 
+              src="http://187.103.16.34" 
+              className="w-full h-full border-0 relative z-10 bg-slate-900"
+              title="Skins"
+              allowFullScreen
+            />
+          </div>
         ) : !isAdminAuthenticated ? (
           <div className="max-w-md mx-auto mt-20 p-10 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl animate-in zoom-in-95">
             <h2 className="text-2xl font-gaming font-bold text-center mb-6 text-purple-400">Autenticação master</h2>
