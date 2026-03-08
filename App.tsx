@@ -308,7 +308,7 @@ const App: React.FC = () => {
                <div className="w-12 h-12 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
             </div>
             <iframe 
-              src="http://187.103.16.34" 
+              src="https://187.103.16.34/" 
               className="w-full h-full border-0 relative z-10 bg-slate-900"
               title="Skins"
               allowFullScreen
