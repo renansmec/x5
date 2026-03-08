@@ -138,7 +138,7 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
                             <span className="text-slate-600 text-lg leading-none">-</span>
                         )}
                     </div>
-                  </div>
+                  
                 </td>
                 <td className="px-6 py-4 font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
                   {player.nick}

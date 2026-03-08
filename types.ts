@@ -28,4 +28,4 @@ export interface FullRankingEntry extends PlayerStats {
 
 }
 
-export type ViewType = 'ranking' | 'admin' | 'balancer' | 'skins';
+export type ViewType = 'ranking' | 'admin' | 'balancer';
