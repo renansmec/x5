@@ -41,10 +41,19 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
       if (Object.keys(currMap).length > 0) {
         prevMap = currMap;
         localStorage.setItem('previousRanking', JSON.stringify(prevMap));
+      } else {
+        // Primeira vez carregando, define prevMap igual ao atual para não mostrar todos como NEW
+        prevMap = currentRankingMap;
+        localStorage.setItem('previousRanking', JSON.stringify(prevMap));
       }
       currMap = currentRankingMap;
       localStorage.setItem('currentRanking', JSON.stringify(currMap));
       localStorage.setItem('rankingDataHash', currentDataHash);
+    } else {
+      // Se não mudou, mas prevMap está vazio por algum motivo, usa o currMap
+      if (Object.keys(prevMap).length === 0 && Object.keys(currMap).length > 0) {
+        prevMap = currMap;
+      }
     }
 
     const newTrendMap: Record<string, number> = {};
@@ -166,7 +175,9 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
                 <td className="px-6 py-4">
                     {/* INDICADOR DE TENDÊNCIA (TREND) */}
                     <div className="w-full flex justify-center">
-                        {player.trend && player.trend > 0 ? (
+                        {player.trend === 999 ? (
+                            <span className="text-[9px] bg-emerald-900 text-emerald-300 px-1 rounded animate-pulse">NEW</span>
+                        ) : player.trend && player.trend > 0 ? (
                             <span className="text-emerald-500 text-[10px] font-bold flex flex-col items-center animate-in slide-in-from-bottom-2">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 15l7-7 7 7"></path></svg>
                                 <span className="-mt-1">{player.trend}</span>
@@ -176,8 +187,6 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 9l-7 7-7-7"></path></svg>
                                 <span className="-mt-1">{Math.abs(player.trend)}</span>
                             </span>
-                        ) : player.trend === 999 ? (
-                            <span className="text-[9px] bg-emerald-900 text-emerald-300 px-1 rounded animate-pulse">NEW</span>
                         ) : (
                             <span className="text-slate-600 text-lg leading-none">-</span>
                         )}
