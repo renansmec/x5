@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { FullRankingEntry } from '../types';
 
 interface RankingTableProps {
@@ -21,44 +21,6 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
     direction: 'desc',
   });
 
-  const [trendMap, setTrendMap] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    // Calcula o ranking atual padrão (por KD desc)
-    const currentDefaultSorted = [...data.filter(p => p.matches >= 3)].sort((a, b) => b.kd - a.kd);
-    const currentRankingMap: Record<string, number> = {};
-    currentDefaultSorted.forEach((p, index) => {
-      currentRankingMap[p.playerId] = index + 1;
-    });
-
-    const storedDataHash = localStorage.getItem('rankingDataHash');
-    const currentDataHash = JSON.stringify(data);
-
-    let prevMap: Record<string, number> = JSON.parse(localStorage.getItem('previousRanking') || '{}');
-    let currMap: Record<string, number> = JSON.parse(localStorage.getItem('currentRanking') || '{}');
-
-    if (storedDataHash !== currentDataHash) {
-      if (Object.keys(currMap).length > 0) {
-        prevMap = currMap;
-        localStorage.setItem('previousRanking', JSON.stringify(prevMap));
-      }
-      currMap = currentRankingMap;
-      localStorage.setItem('currentRanking', JSON.stringify(currMap));
-      localStorage.setItem('rankingDataHash', currentDataHash);
-    }
-
-    const newTrendMap: Record<string, number> = {};
-    Object.keys(currentRankingMap).forEach(playerId => {
-      if (prevMap[playerId] !== undefined) {
-        newTrendMap[playerId] = prevMap[playerId] - currentRankingMap[playerId];
-      } else {
-        newTrendMap[playerId] = 999; // NEW
-      }
-    });
-
-    setTrendMap(newTrendMap);
-  }, [data]);
-
   const handleSort = (key: SortKey) => {
     setSortConfig((current) => ({
       key,
@@ -69,20 +31,17 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
   const sortedData = useMemo(() => {
     // Filtra jogadores com menos de 3 partidas antes de ordenar
     const filtered = data.filter(player => player.matches >= 3);
-    const sorted = [...filtered].map(player => ({
-      ...player,
-      trend: trendMap[player.playerId] || 0
-    }));
+    const sorted = [...filtered];
     
     return sorted.sort((a, b) => {
-      const aValue = a[sortConfig.key] ?? 0;
-      const bValue = b[sortConfig.key] ?? 0;
+      const aValue = a[sortConfig.key];
+      const bValue = b[sortConfig.key];
 
       if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [data, sortConfig, trendMap]);
+  }, [data, sortConfig]);
 
   const SortIcon = ({ columnKey }: { columnKey: SortKey }) => {
     const isActive = sortConfig.key === columnKey;
@@ -126,21 +85,19 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
         <thead className="bg-slate-900/80 font-gaming uppercase tracking-wider text-sm">
           <tr>
             <th className="px-6 py-4 text-slate-500 w-16">#</th>
-            <th className="px-6 py-4 text-slate-500 text-center w-20">Tendência</th>
             {renderHeader("Nick", "nick", "text-slate-300")}
             {renderHeader("Partidas", "matches", "text-slate-300")}
             {renderHeader("Vítimas", "kills", "text-emerald-400")}
             {renderHeader("Mortes", "deaths", "text-rose-400")}
             {renderHeader("Assists", "assists", "text-sky-400")}
             {renderHeader("Dano", "damage", "text-orange-400")}
-            {renderHeader("%HS", "hsPercent", "text-purple-400")}
             {renderHeader("K/D", "kd", "text-yellow-400", "text-left", "Cálculo: Vítimas / Mortes")}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-700">
           {sortedData.length === 0 ? (
             <tr>
-              <td colSpan={10} className="px-6 py-10 text-center text-slate-500 italic">
+              <td colSpan={8} className="px-6 py-10 text-center text-slate-500 italic">
                 {data.length > 0 
                   ? "Nenhum jogador elegível (mínimo 3 partidas)."
                   : "Nenhum dado encontrado para esta temporada."}
@@ -162,10 +119,9 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
                   `}>
                     {index + 1}
                   </span>
-                </td>
-                <td className="px-6 py-4">
+                                      
                     {/* INDICADOR DE TENDÊNCIA (TREND) */}
-                    <div className="w-full flex justify-center">
+                    <div className="w-5 flex justify-center">
                         {player.trend && player.trend > 0 ? (
                             <span className="text-emerald-500 text-[10px] font-bold flex flex-col items-center animate-in slide-in-from-bottom-2">
                                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 15l7-7 7 7"></path></svg>
@@ -182,6 +138,7 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
                             <span className="text-slate-600 text-lg leading-none">-</span>
                         )}
                     </div>
+                  
                 </td>
                 <td className="px-6 py-4 font-bold text-slate-100 group-hover:text-blue-400 transition-colors">
                   {player.nick}
@@ -192,9 +149,6 @@ const RankingTable: React.FC<RankingTableProps> = ({ data }) => {
                 <td className="px-6 py-4 text-sky-400">{player.assists}</td>
                 <td className="px-6 py-4 text-orange-400 font-medium">
                   {player.damage.toLocaleString('pt-BR')}
-                </td>
-                <td className="px-6 py-4 text-purple-400 font-medium">
-                  {player.hsPercent || 0}%
                 </td>
                 <td className="px-6 py-4">
                   <span className={`
