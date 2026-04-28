@@ -139,8 +139,8 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick }) => {
             {renderHeader("Nick", "nick", "text-slate-300")}
             {renderHeader("Patente", "kd", "text-amber-400")}
             {renderHeader("Part.", "matches", "text-slate-300")}
-            {renderHeader("Vítimas", "kills", "text-emerald-400")}
-            {renderHeader("Mortes", "deaths", "text-rose-400")}
+            {renderHeader("Kills", "kills", "text-emerald-400")}
+            {renderHeader("Deaths", "deaths", "text-rose-400")}
             {renderHeader("Assists", "assists", "text-sky-400")}
             {renderHeader("Dano", "damage", "text-orange-400")}
             {renderHeader("%HS", "hsPercent", "text-purple-400")}
