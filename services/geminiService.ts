@@ -83,11 +83,11 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
   };
 
   const modelsToTry = [
-    'gemini-2.0-flash-lite-preview-02-05',
+    'gemini-3-flash-preview',
+    'gemini-3.1-flash-lite-preview',
+    'gemini-3.1-pro-preview',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash-8b'
+    'gemini-2.0-flash'
   ];
 
   let lastError: any = null;
@@ -120,7 +120,11 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
       
       // Se for um erro de cota ou limite, ele afeta a conta toda. Paramos aqui para mostrar a mensagem certa.
       if (errorMsg.includes("limit: 0") || errorMsg.includes("Quota exceeded") || errorMsg.includes("429")) {
-        throw new Error("Sua chave da API do Gemini não possui COTA GRATUITA habilitada ou atingiu o limite diário.\\n\\nVerifique sua conta no Google AI Studio (aistudio.google.com). Pode ser necessário ativar o faturamento na conta do Google Cloud vinculada.");
+        throw new Error(`A API do Gemini retornou erro de limite/cota (429/Exceeded). Se sua chave é nova, lembre-se que o limite gratuito é baixo. Espere um pouco ou ative o faturamento. Erro original: ${errorMsg.slice(0, 50)}...`);
+      }
+      
+      if (errorMsg.includes("403") || errorMsg.includes("PERMISSION_DENIED")) {
+        throw new Error(`Acesso negado (403). Verifique se a chave da API é válida e tem permissão para a API Generative Language. Erro: ${errorMsg.slice(0, 50)}...`);
       }
       
       // Se for SyntaxError de JSON, não tenta denovo com outro modelo,
@@ -135,8 +139,11 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
   console.error("Todos os modelos falharam. Último erro:", lastError);
   let errorMsg = lastError?.message || JSON.stringify(lastError);
   
-  if (errorMsg.includes("limit: 0")) {
-    throw new Error("Sua chave da API do Gemini não possui COTA GRATUITA habilitada ou atingiu o limite.\\n\\nVerifique sua conta no Google AI Studio. Pode ser necessário criar um novo projeto ou chave.");
+  if (errorMsg.includes("limit: 0") || errorMsg.includes("429")) {
+    throw new Error(`Erro de limite/cota (429). Se sua chave for nova, lembre-se do limite gratuito de 15 RPM. Erro: ${errorMsg.slice(0, 80)}...`);
+  }
+  if (errorMsg.includes("403") || errorMsg.includes("PERMISSION_DENIED")) {
+    throw new Error(`Acesso negado (403). Verifique se a chave tem permissão para a API. Erro: ${errorMsg.slice(0, 80)}...`);
   }
   
   throw new Error("Nenhum modelo da IA funcionou:\\n" + errorMsg);
@@ -165,11 +172,11 @@ export const getRankingInsights = async (ranking: FullRankingEntry[], seasonName
   `;
 
   const modelsToTry = [
-    'gemini-2.0-flash-lite-preview-02-05',
+    'gemini-3-flash-preview',
+    'gemini-3.1-flash-lite-preview',
+    'gemini-3.1-pro-preview',
     'gemini-1.5-flash',
-    'gemini-1.5-flash-latest',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash-8b'
+    'gemini-2.0-flash'
   ];
 
   for (const model of modelsToTry) {
