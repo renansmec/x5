@@ -116,15 +116,18 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
       console.warn(`Erro com o modelo ${model}:`, error);
       lastError = error;
       
+      const errorMsg = error?.message || JSON.stringify(error) || "";
+      
+      // Se for um erro de cota ou limite, ele afeta a conta toda. Paramos aqui para mostrar a mensagem certa.
+      if (errorMsg.includes("limit: 0") || errorMsg.includes("Quota exceeded") || errorMsg.includes("429")) {
+        throw new Error("Sua chave da API do Gemini não possui COTA GRATUITA habilitada ou atingiu o limite diário.\\n\\nVerifique sua conta no Google AI Studio (aistudio.google.com). Pode ser necessário ativar o faturamento na conta do Google Cloud vinculada.");
+      }
+      
       // Se for SyntaxError de JSON, não tenta denovo com outro modelo,
       // pois o problema não é o modelo, é o output
       if (error instanceof SyntaxError) {
         throw new Error("Falha ao organizar os dados da imagem. O resultado não pôde ser lido.");
       }
-      
-      const msg = error?.message || "";
-      // Se a conta não tem cota (excedeu), o limit: 0 geralmente afeta a conta toda. 
-      // Mas tentaremos os outros modelos só para garantir.
     }
   }
 
