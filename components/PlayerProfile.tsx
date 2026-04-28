@@ -139,7 +139,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selected
             <h2 className="text-3xl md:text-4xl font-gaming font-bold text-white mb-2">
               {player.nick}
             </h2>
-            <div className="inline-block mt-1 mb-2 group/tooltip relative">
+            {/*<div className="inline-block mt-1 mb-2 group/tooltip relative">
               <img 
                 src={`/patentes/${getRankFromKD(parseFloat(profileData.overallKD)).image}`} 
                 alt={getRankFromKD(parseFloat(profileData.overallKD)).name} 
@@ -148,7 +148,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selected
               <span className="absolute -top-8 left-1/2 -translate-x-1/2 scale-0 transition-transform bg-slate-900 border border-slate-700 text-xs text-white px-2 py-1 rounded group-hover/tooltip:scale-100 z-10 whitespace-nowrap">
                 {getRankFromKD(parseFloat(profileData.overallKD)).name}
               </span>
-            </div>
+            </div>*/}
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-4">
               <div className="bg-slate-800/80 rounded-xl px-4 py-2 border border-slate-700/50 flex flex-col items-center">
                 <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">K/D Média</span>
