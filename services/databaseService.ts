@@ -154,7 +154,7 @@ export const db = {
   },
 
   // Método unificado para salvar tudo na ordem correta
-  async syncDatabase(players: Player[], seasons: Season[], stats: PlayerStats[]): Promise<void> {
+  async syncDatabase(players: Player[], seasons: Season[], stats: PlayerStats[], matches: MatchRecord[] = []): Promise<void> {
     if (!this.isCloudEnabled()) return;
 
     try {
@@ -162,6 +162,7 @@ export const db = {
       
       // 1. Apagar filhos primeiro (Stats dependem de Players e Seasons)
       await supabaseFetch('stats', 'DELETE');
+      await supabaseFetch('matches', 'DELETE').catch(() => console.log('Tabela matches pode não existir ainda'));
       
       // 2. Apagar pais
       // Usamos Promise.all aqui pois players e seasons não dependem entre si
@@ -171,11 +172,50 @@ export const db = {
       ]);
 
       // 3. Criar pais
-      if (players.length > 0) await supabaseFetch('players', 'POST', players);
-      if (seasons.length > 0) await supabaseFetch('seasons', 'POST', seasons);
+      // Normalizando chaves para evitar PGRST102 (PostgREST exige que todos os objetos do array tenham mesmas chaves)
+      const normalizedPlayers = players.map(p => ({
+        id: p.id || '',
+        nick: p.nick || ''
+      }));
+      
+      const normalizedSeasons = seasons.map(s => ({
+        id: s.id || '',
+        name: s.name || ''
+      }));
+
+      if (normalizedPlayers.length > 0) await supabaseFetch('players', 'POST', normalizedPlayers);
+      if (normalizedSeasons.length > 0) await supabaseFetch('seasons', 'POST', normalizedSeasons);
 
       // 4. Criar filhos
-      if (stats.length > 0) await supabaseFetch('stats', 'POST', stats);
+      const normalizedStats = stats.map(s => ({
+        id: s.id || '',
+        playerId: s.playerId || '',
+        seasonId: s.seasonId || '',
+        matches: s.matches || 0,
+        kills: s.kills || 0,
+        deaths: s.deaths || 0,
+        assists: s.assists || 0,
+        damage: s.damage || 0,
+        hsPercent: s.hsPercent || 0
+      }));
+
+      if (normalizedStats.length > 0) await supabaseFetch('stats', 'POST', normalizedStats);
+      
+      if (matches && matches.length > 0) {
+        const normalizedMatches = matches.map(m => ({
+          id: m.id || '',
+          seasonId: m.seasonId || '',
+          map: m.map || '',
+          team1Name: m.team1Name || '',
+          team2Name: m.team2Name || '',
+          team1Score: m.team1Score || 0,
+          team2Score: m.team2Score || 0,
+          winningTeam: m.winningTeam || '',
+          date: m.date || new Date().toISOString(),
+          players: m.players || []
+        }));
+        await supabaseFetch('matches', 'POST', normalizedMatches).catch(e => console.error('Erro ao sincronizar matches', e));
+      }
 
       console.log("Sincronização concluída com sucesso.");
     } catch (error) {

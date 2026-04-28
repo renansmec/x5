@@ -185,21 +185,33 @@ const App: React.FC = () => {
 
 
   const handleAddMatch = async (match: MatchRecord, updatedStats: PlayerStats[]) => {
-    setMatches(prev => [match, ...prev]);
+    const newMatches = [match, ...matches];
+    setMatches(newMatches);
     setStats(updatedStats);
-    await db.saveMatch(match);
-    await db.syncDatabase(players, seasons, updatedStats);
+    
+    // We can still try to save the single match just in case cloud is not fully dropping, 
+    // but the full sync below will ensure everything is consistent.
+    await db.saveMatch(match).catch(() => {}); 
+    await db.syncDatabase(players, seasons, updatedStats, newMatches);
   };
 
   const handlePublishToCloud = async () => {
     setIsLoading(true);
     try {
       // Usa o novo método sincronizado que evita erros de Foreign Key
-      await db.syncDatabase(players, seasons, stats);
+      await db.syncDatabase(players, seasons, stats, matches);
       alert("✅ Dados sincronizados com sucesso!");
     } catch (e: any) {
       console.error(e);
-      alert(`❌ Falha ao publicar: ${e.message || "Erro desconhecido"}`);
+      const errMsg = e.message || "Erro desconhecido";
+      
+      let alertMsg = `❌ Falha ao publicar: ${errMsg}`;
+      
+      if (errMsg.includes("PGRST204") || errMsg.includes("column") || errMsg.includes("PGRST102")) {
+        alertMsg = `❌ ERRO DE BANCO DE DADOS: Ocorreu um erro ao sincronizar com o Supabase.\n\nSim, você precisa atualizar as tabelas do seu banco de dados adicionando as novas colunas e criando a tabela Matches!\n\nRode este SQL no SQL Editor do Supabase:\n\nALTER TABLE stats ADD COLUMN IF NOT EXISTS kills int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS deaths int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS assists int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS damage int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS "hsPercent" int DEFAULT 0;\n\nCREATE TABLE IF NOT EXISTS matches (\n  id text PRIMARY KEY,\n  "seasonId" text REFERENCES seasons(id) ON DELETE CASCADE,\n  map text,\n  "team1Name" text,\n  "team2Name" text,\n  "team1Score" int,\n  "team2Score" int,\n  "winningTeam" text,\n  date text,\n  players jsonb\n);`;
+      }
+      
+      alert(alertMsg);
     } finally {
       setIsLoading(false);
     }
