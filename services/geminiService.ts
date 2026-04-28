@@ -22,12 +22,11 @@ const getApiKey = () => {
   return "";
 };
 
-export const extractMatchDataFromImage = async (base64Image: string, mimeType: string): Promise<ExtractedMatchData | null> => {
+export const extractMatchDataFromImage = async (base64Image: string, mimeType: string): Promise<ExtractedMatchData> => {
   const apiKey = getApiKey();
   if (!apiKey) {
-    alert("API Key do Gemini não encontrada! Se você está rodando na Vercel, lembre-se de adicionar a variável VITE_GEMINI_API_KEY nas Environment Variables (Configurações) do seu projeto lá na Vercel e fazer um novo deploy.");
     console.error("Configuração de API Key do Gemini ausente.");
-    return null;
+    throw new Error("API Key do Gemini não encontrada! \\nPara funcionar na Vercel:\\n1. Gere uma chave em aistudio.google.com/app/apikey\\n2. Vá no painel da Vercel (Settings -> Environment Variables)\\n3. Crie uma variável chamada VITE_GEMINI_API_KEY com sua chave\\n4. Faça um novo Deploy na Vercel.");
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -53,7 +52,7 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       contents: [
         { text: prompt },
         { inlineData: { data: base64Image, mimeType } }
@@ -93,15 +92,13 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
 
     const text = response.text;
     if (!text) {
-      alert("A resposta da IA estava vazia.");
-      return null;
+      throw new Error("A resposta da IA estava vazia.");
     }
     
     return JSON.parse(text) as ExtractedMatchData;
   } catch (error: any) {
     console.error("Erro detalhado do Gemini SDK:", error);
-    alert("Falha de Processamento com a IA. Erro: " + (error?.message || JSON.stringify(error) || "Desconhecido") + "\\nVerifique se o modelo gemini-2.0-flash está disponível para sua chave e se ela é válida.");
-    return null;
+    throw new Error("Falha na IA: " + (error?.message || JSON.stringify(error) || "Desconhecido"));
   }
 };
 
@@ -129,7 +126,7 @@ export const getRankingInsights = async (ranking: FullRankingEntry[], seasonName
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-1.5-flash',
       contents: prompt,
       config: {
         temperature: 0.8,
