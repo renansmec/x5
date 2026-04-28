@@ -1,6 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Player, Season, PlayerStats, FullRankingEntry } from '../types';
+import { getRankFromKD } from '../utils';
 
 interface TeamBalancerProps {
   players: Player[];
@@ -194,8 +195,9 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
                 >
                   <div className="flex justify-between items-start">
                     <span className={`font-bold truncate pr-2 ${isSelected ? 'text-white' : 'text-slate-300'}`}>{player.nick}</span>
-                    <span className={`text-xs font-mono px-1.5 py-0.5 rounded ${isSelected ? 'bg-purple-800 text-purple-200' : 'bg-slate-900 text-slate-500'}`}>
-                      {player.kd.toFixed(2)}
+                    <span className={`text-xs font-mono px-1.5 py-0.5 rounded flex items-center gap-2 ${isSelected ? 'bg-purple-800 text-purple-200' : 'bg-slate-900 text-slate-500'}`}>
+                      <img src={`/patentes/${getRankFromKD(player.kd).image}`} alt={getRankFromKD(player.kd).name} className="h-4 object-contain" />
+                      <span>{player.kd.toFixed(2)}</span>
                     </span>
                   </div>
                 </button>
@@ -231,7 +233,12 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
                   <div className="divide-y divide-slate-800">
                     {team.players.map(p => (
                       <div key={p.playerId} className="p-4 flex justify-between items-center hover:bg-white/5 transition-colors">
-                        <span className="font-bold text-slate-200">{p.nick}</span>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold text-slate-200">{p.nick}</span>
+                          <span className="hidden sm:inline-block">
+                            <img src={`/patentes/${getRankFromKD(p.kd).image}`} alt={getRankFromKD(p.kd).name} className="h-6 object-contain filter drop-shadow-sm" title={getRankFromKD(p.kd).name} />
+                          </span>
+                        </div>
                         <span className="text-sm font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">KD {p.kd.toFixed(2)}</span>
                       </div>
                     ))}

@@ -1,9 +1,11 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ViewType, Player, Season, PlayerStats, FullRankingEntry } from './types';
+import { ViewType, Player, Season, PlayerStats, FullRankingEntry, MatchRecord } from './types';
 import RankingTable from './components/RankingTable';
 import AdminPanel from './components/AdminPanel';
 import TeamBalancer from './components/TeamBalancer';
+import MatchHistory from './components/MatchHistory';
+import PlayerProfile from './components/PlayerProfile';
 import { db } from './services/databaseService';
 import { getRankingInsights } from './services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
@@ -12,6 +14,7 @@ const ADMIN_PASSWORD = "x5admin2024";
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewType>('ranking');
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     return sessionStorage.getItem('x5_is_admin') === 'true';
   });
@@ -19,6 +22,7 @@ const App: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]);
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [stats, setStats] = useState<PlayerStats[]>([]);
+  const [matches, setMatches] = useState<MatchRecord[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSeasonId, setSelectedSeasonId] = useState('');
@@ -32,16 +36,18 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const [cloudPlayers, cloudSeasons, cloudStats] = await Promise.all([
+      const [cloudPlayers, cloudSeasons, cloudStats, cloudMatches] = await Promise.all([
         db.getPlayers(),
         db.getSeasons(),
-        db.getStats()
+        db.getStats(),
+        db.getMatches()
       ]);
 
       if (cloudPlayers && cloudSeasons && cloudStats) {
         setPlayers(cloudPlayers || []);
         setSeasons(cloudSeasons || []);
         setStats(cloudStats || []);
+        setMatches(cloudMatches || []);
 
         // Seleciona automaticamente a última temporada alimentada
         if (cloudSeasons && cloudSeasons.length > 0 && !selectedSeasonId) {
@@ -81,8 +87,8 @@ const App: React.FC = () => {
 
   const currentRanking: FullRankingEntry[] = useMemo(() => {
     if (!selectedSeasonId) return [];
-    
-    return stats
+
+    const currentStats = stats
       .filter(s => s.seasonId === selectedSeasonId)
       .map(s => {
         const player = players.find(p => p.id === s.playerId);
@@ -91,11 +97,14 @@ const App: React.FC = () => {
           ...s,
           nick: player?.nick || 'Desconhecido',
           kd: kdValue,
-          damagePerMatch: s.matches === 0 ? 0 : s.damage / s.matches
+          damagePerMatch: s.matches === 0 ? 0 : s.damage / s.matches,
+          hsPercent: s.hsPercent || 0
         };
       })
       .sort((a, b) => b.kd - a.kd);
-  }, [stats, selectedSeasonId, players]);
+
+    return currentStats;
+  }, [stats, selectedSeasonId, players, seasons]);
 
   // Filtra dados para o gráfico (apenas jogadores com 3+ partidas)
   const chartData = useMemo(() => {
@@ -138,10 +147,11 @@ const App: React.FC = () => {
           kills: newStats[idx].kills + entry.kills,
           deaths: newStats[idx].deaths + entry.deaths,
           assists: newStats[idx].assists + entry.assists,
-          damage: newStats[idx].damage + entry.damage
+          damage: newStats[idx].damage + entry.damage,
+          hsPercent: Math.round(((newStats[idx].hsPercent || 0) * newStats[idx].matches + (entry.hsPercent || 0)) / (newStats[idx].matches + entry.matches))
         };
       } else {
-        newStats.push({ ...entry, id: `st${Date.now()}` });
+        newStats.push({ ...entry, id: `st${Date.now()}_${Math.random().toString(36).substr(2, 9)}` });
       }
       return newStats;
     });
@@ -162,16 +172,24 @@ const App: React.FC = () => {
           kills: entry.kills,
           deaths: entry.deaths,
           assists: entry.assists,
-          damage: entry.damage
+          damage: entry.damage,
+          hsPercent: entry.hsPercent
         };
       } else {
         // Se não existir, cria
-        newStats.push({ ...entry, id: `st${Date.now()}` });
+        newStats.push({ ...entry, id: `st${Date.now()}_${Math.random().toString(36).substr(2, 9)}` });
       }
       return newStats;
     });
   };
 
+
+  const handleAddMatch = async (match: MatchRecord, updatedStats: PlayerStats[]) => {
+    setMatches(prev => [match, ...prev]);
+    setStats(updatedStats);
+    await db.saveMatch(match);
+    await db.syncDatabase(players, seasons, updatedStats);
+  };
 
   const handlePublishToCloud = async () => {
     setIsLoading(true);
@@ -221,6 +239,7 @@ const App: React.FC = () => {
           
           <nav className="flex items-center gap-2 bg-slate-800 p-1 rounded-xl border border-slate-700 overflow-x-auto">
             <button onClick={() => setView('ranking')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'ranking' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Ranking</button>
+            <button onClick={() => setView('history')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'history' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Histórico</button>
             <button onClick={() => setView('balancer')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'balancer' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Sortear times</button>
             <a href="http://187.103.16.34" target="_blank" rel="noopener noreferrer" className="px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 flex items-center gap-1">
               Skins <span className="text-[10px]">↗</span>
@@ -292,7 +311,10 @@ const App: React.FC = () => {
                       </div>
                    </div>
                  </div>
-                 <RankingTable data={currentRanking} />
+                 <RankingTable 
+                   data={currentRanking} 
+                   onPlayerClick={(playerId) => { setSelectedPlayerId(playerId); setView('profile'); }} 
+                 />
                </div>
              ) : (
                <div className="text-center py-32 bg-slate-900/30 border border-slate-800 rounded-3xl border-dashed">
@@ -302,6 +324,15 @@ const App: React.FC = () => {
                </div>
              )}
           </div>
+        ) : view === 'history' ? (
+          <MatchHistory matches={matches} players={players} seasons={seasons} selectedSeasonId={selectedSeasonId} />
+        ) : view === 'profile' ? (
+          <PlayerProfile 
+            player={players.find(p => p.id === selectedPlayerId) || null}
+            matches={matches}
+            selectedSeasonId={selectedSeasonId}
+            onClose={() => { setView('ranking'); setSelectedPlayerId(null); }}
+          />
         ) : view === 'balancer' ? (
           <TeamBalancer players={players} seasons={seasons} stats={stats} />
           
@@ -331,6 +362,9 @@ const App: React.FC = () => {
             onResetData={handleResetData} onSetView={setView}
             onEditSeason={() => {}}
             onPublish={handlePublishToCloud}
+            onAddMatch={handleAddMatch}
+            globalSelectedSeasonId={selectedSeasonId}
+            setGlobalSelectedSeasonId={setSelectedSeasonId}
           />
         )}
       </main>

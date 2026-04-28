@@ -138,6 +138,21 @@ export const db = {
     try { return await supabaseFetch('stats', 'GET', null, '?select=*'); } catch { return null; }
   },
 
+  async getMatches(): Promise<any[] | null> {
+    try { return await supabaseFetch('matches', 'GET', null, '?select=*&order=date.desc'); } catch { return null; }
+  },
+
+  async saveMatch(match: any): Promise<boolean> {
+    if (!this.isCloudEnabled()) return false;
+    try {
+      await supabaseFetch('matches', 'POST', match);
+      return true;
+    } catch (error) {
+      console.error("Erro ao salvar partida:", error);
+      return false;
+    }
+  },
+
   // Método unificado para salvar tudo na ordem correta
   async syncDatabase(players: Player[], seasons: Season[], stats: PlayerStats[]): Promise<void> {
     if (!this.isCloudEnabled()) return;
@@ -173,6 +188,7 @@ export const db = {
   async clearDatabase(): Promise<void> {
     if (this.isCloudEnabled()) {
       await supabaseFetch('stats', 'DELETE');
+      await supabaseFetch('matches', 'DELETE');
       await supabaseFetch('players', 'DELETE');
       await supabaseFetch('seasons', 'DELETE');
     }
