@@ -1,17 +1,16 @@
 import React, { useMemo } from 'react';
-import { Player, MatchRecord, FullRankingEntry } from '../types';
+import { Player, MatchRecord } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getRankFromKD } from '../utils';
 
 interface PlayerProfileProps {
-  playerStats: FullRankingEntry | null;
+  player: Player | null;
   matches: MatchRecord[];
   selectedSeasonId: string;
   onClose: () => void;
 }
 
-const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, selectedSeasonId, onClose }) => {
-  const player = playerStats;
+const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selectedSeasonId, onClose }) => {
   if (!player) return null;
 
   const profileData = useMemo(() => {
@@ -20,7 +19,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, sel
     
     // Find all matches where player participated
     const playerParticipated = seasonMatches.filter(m => 
-      m.players.some(p => p.playerId === player.playerId || p.nick === player.nick)
+      m.players.some(p => p.playerId === player.id || p.nick === player.nick)
     );
 
     // Sort ascending by date to show history from left to right
@@ -40,7 +39,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, sel
     const mapStatsMap: Record<string, { matches: number, wins: number }> = {};
 
     chronologicalMatches.forEach((m, idx) => {
-      const pRecord = m.players.find(p => p.playerId === player.playerId || p.nick === player.nick);
+      const pRecord = m.players.find(p => p.playerId === player.id || p.nick === player.nick);
       if (!pRecord) return; 
 
       const t1Name = m.team1Name || 'TIME 1';
@@ -92,10 +91,10 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, sel
       });
     });
 
-    const totalMatches = player.matches;
-    const winRate = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '0.0';
-    const overallKD = player.kd.toFixed(2);
-    const averageHS = player.hsPercent || 0;
+    const totalMatches = wins + losses;
+    const winRate = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : '0.0';
+    const overallKD = totalDeaths === 0 ? totalKills : (totalKills / totalDeaths).toFixed(2);
+    const averageHS = hsMatchesCount > 0 ? Math.round(totalHS / hsMatchesCount) : 0;
 
     const mapStats = Object.entries(mapStatsMap).map(([mapName, stats]) => ({
       mapName,
@@ -110,7 +109,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, sel
       totalMatches,
       winRate,
       historyData,
-      overallKD: overallKD.toString(),
+      overallKD,
       averageHS,
       mapStats
     };

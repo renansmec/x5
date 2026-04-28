@@ -165,19 +165,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       // Remove o prefixo "data:image/png;base64,"
       const base64Data = base64String.split(',')[1];
       
-      try {
-        const data = await extractMatchDataFromImage(base64Data, file.type);
-        setExtractedData(data);
-      } catch (error: any) {
-        alert(error.message || "Erro desconhecido ao processar imagem.");
-        // Clear the preview on error so they try again
-        setImagePreview(null);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
-      } finally {
-        setIsExtracting(false);
-      }
+      const data = await extractMatchDataFromImage(base64Data, file.type);
+      setExtractedData(data);
+      setIsExtracting(false);
     };
     reader.readAsDataURL(file);
   };

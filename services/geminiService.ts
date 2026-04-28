@@ -5,28 +5,17 @@ import { FullRankingEntry, ExtractedMatchData } from "../types";
 const getApiKey = () => {
   try {
     if (typeof process !== 'undefined' && process.env) {
-      if (process.env.API_KEY) return process.env.API_KEY;
-      if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
-      if (process.env.VITE_API_KEY) return process.env.VITE_API_KEY;
-      if (process.env.REACT_APP_API_KEY) return process.env.REACT_APP_API_KEY;
+      return process.env.API_KEY || process.env.VITE_API_KEY || process.env.REACT_APP_API_KEY || "";
     }
   } catch(e) {}
-  
-  try {
-    // @ts-ignore
-    if (import.meta.env.VITE_GEMINI_API_KEY) return import.meta.env.VITE_GEMINI_API_KEY;
-    // @ts-ignore
-    if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
-  } catch(e) {}
-  
   return "";
 };
 
-export const extractMatchDataFromImage = async (base64Image: string, mimeType: string): Promise<ExtractedMatchData> => {
+export const extractMatchDataFromImage = async (base64Image: string, mimeType: string): Promise<ExtractedMatchData | null> => {
   const apiKey = getApiKey();
   if (!apiKey) {
     console.error("Configuração de API Key do Gemini ausente.");
-    throw new Error("API Key do Gemini não encontrada! \\nPara funcionar na Vercel:\\n1. Gere uma chave em aistudio.google.com/app/apikey\\n2. Vá no painel da Vercel (Settings -> Environment Variables)\\n3. Crie uma variável chamada VITE_GEMINI_API_KEY com sua chave\\n4. Faça um novo Deploy na Vercel.");
+    return null;
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -52,7 +41,7 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3.1-pro-preview',
       contents: [
         { text: prompt },
         { inlineData: { data: base64Image, mimeType } }
@@ -91,14 +80,12 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
     });
 
     const text = response.text;
-    if (!text) {
-      throw new Error("A resposta da IA estava vazia.");
-    }
+    if (!text) return null;
     
     return JSON.parse(text) as ExtractedMatchData;
-  } catch (error: any) {
-    console.error("Erro detalhado do Gemini SDK:", error);
-    throw new Error("Falha na IA: " + (error?.message || JSON.stringify(error) || "Desconhecido"));
+  } catch (error) {
+    console.error("Erro ao extrair dados da imagem:", error);
+    return null;
   }
 };
 
@@ -126,7 +113,7 @@ export const getRankingInsights = async (ranking: FullRankingEntry[], seasonName
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         temperature: 0.8,
