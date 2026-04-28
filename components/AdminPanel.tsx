@@ -166,6 +166,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       const base64Data = base64String.split(',')[1];
       
       const data = await extractMatchDataFromImage(base64Data, file.type);
+      if (!data) {
+        alert("Erro ao extrair dados ou API Key ausente/inválida. Verifique o console para mais detalhes.");
+      }
       setExtractedData(data);
       setIsExtracting(false);
     };

@@ -5,15 +5,27 @@ import { FullRankingEntry, ExtractedMatchData } from "../types";
 const getApiKey = () => {
   try {
     if (typeof process !== 'undefined' && process.env) {
-      return process.env.API_KEY || process.env.VITE_API_KEY || process.env.REACT_APP_API_KEY || "";
+      if (process.env.API_KEY) return process.env.API_KEY;
+      if (process.env.GEMINI_API_KEY) return process.env.GEMINI_API_KEY;
+      if (process.env.VITE_API_KEY) return process.env.VITE_API_KEY;
+      if (process.env.REACT_APP_API_KEY) return process.env.REACT_APP_API_KEY;
     }
   } catch(e) {}
+  
+  try {
+    // @ts-ignore
+    if (import.meta.env.VITE_GEMINI_API_KEY) return import.meta.env.VITE_GEMINI_API_KEY;
+    // @ts-ignore
+    if (import.meta.env.VITE_API_KEY) return import.meta.env.VITE_API_KEY;
+  } catch(e) {}
+  
   return "";
 };
 
 export const extractMatchDataFromImage = async (base64Image: string, mimeType: string): Promise<ExtractedMatchData | null> => {
   const apiKey = getApiKey();
   if (!apiKey) {
+    alert("API Key do Gemini não encontrada! Se você está rodando na Vercel, lembre-se de adicionar a variável VITE_GEMINI_API_KEY nas Environment Variables (Configurações) do seu projeto lá na Vercel e fazer um novo deploy.");
     console.error("Configuração de API Key do Gemini ausente.");
     return null;
   }
@@ -41,7 +53,7 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3.1-pro-preview',
+      model: 'gemini-2.0-flash',
       contents: [
         { text: prompt },
         { inlineData: { data: base64Image, mimeType } }
@@ -80,11 +92,15 @@ export const extractMatchDataFromImage = async (base64Image: string, mimeType: s
     });
 
     const text = response.text;
-    if (!text) return null;
+    if (!text) {
+      alert("A resposta da IA estava vazia.");
+      return null;
+    }
     
     return JSON.parse(text) as ExtractedMatchData;
-  } catch (error) {
-    console.error("Erro ao extrair dados da imagem:", error);
+  } catch (error: any) {
+    console.error("Erro detalhado do Gemini SDK:", error);
+    alert("Falha de Processamento com a IA. Erro: " + (error?.message || JSON.stringify(error) || "Desconhecido") + "\\nVerifique se o modelo gemini-2.0-flash está disponível para sua chave e se ela é válida.");
     return null;
   }
 };
@@ -113,7 +129,7 @@ export const getRankingInsights = async (ranking: FullRankingEntry[], seasonName
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash',
       contents: prompt,
       config: {
         temperature: 0.8,

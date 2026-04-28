@@ -1,16 +1,17 @@
 import React, { useMemo } from 'react';
-import { Player, MatchRecord } from '../types';
+import { Player, MatchRecord, FullRankingEntry } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getRankFromKD } from '../utils';
 
 interface PlayerProfileProps {
-  player: Player | null;
+  playerStats: FullRankingEntry | null;
   matches: MatchRecord[];
   selectedSeasonId: string;
   onClose: () => void;
 }
 
-const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selectedSeasonId, onClose }) => {
+const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, selectedSeasonId, onClose }) => {
+  const player = playerStats;
   if (!player) return null;
 
   const profileData = useMemo(() => {
@@ -19,7 +20,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selected
     
     // Find all matches where player participated
     const playerParticipated = seasonMatches.filter(m => 
-      m.players.some(p => p.playerId === player.id || p.nick === player.nick)
+      m.players.some(p => p.playerId === player.playerId || p.nick === player.nick)
     );
 
     // Sort ascending by date to show history from left to right
@@ -39,7 +40,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selected
     const mapStatsMap: Record<string, { matches: number, wins: number }> = {};
 
     chronologicalMatches.forEach((m, idx) => {
-      const pRecord = m.players.find(p => p.playerId === player.id || p.nick === player.nick);
+      const pRecord = m.players.find(p => p.playerId === player.playerId || p.nick === player.nick);
       if (!pRecord) return; 
 
       const t1Name = m.team1Name || 'TIME 1';
@@ -91,10 +92,10 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selected
       });
     });
 
-    const totalMatches = wins + losses;
-    const winRate = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(1) : '0.0';
-    const overallKD = totalDeaths === 0 ? totalKills : (totalKills / totalDeaths).toFixed(2);
-    const averageHS = hsMatchesCount > 0 ? Math.round(totalHS / hsMatchesCount) : 0;
+    const totalMatches = player.matches;
+    const winRate = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '0.0';
+    const overallKD = player.kd.toFixed(2);
+    const averageHS = player.hsPercent || 0;
 
     const mapStats = Object.entries(mapStatsMap).map(([mapName, stats]) => ({
       mapName,
@@ -109,7 +110,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selected
       totalMatches,
       winRate,
       historyData,
-      overallKD,
+      overallKD: overallKD.toString(),
       averageHS,
       mapStats
     };
@@ -139,7 +140,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selected
             <h2 className="text-3xl md:text-4xl font-gaming font-bold text-white mb-2">
               {player.nick}
             </h2>
-            {/*<div className="inline-block mt-1 mb-2 group/tooltip relative">
+            <div className="inline-block mt-1 mb-2 group/tooltip relative">
               <img 
                 src={`/patentes/${getRankFromKD(parseFloat(profileData.overallKD)).image}`} 
                 alt={getRankFromKD(parseFloat(profileData.overallKD)).name} 
@@ -148,7 +149,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ player, matches, selected
               <span className="absolute -top-8 left-1/2 -translate-x-1/2 scale-0 transition-transform bg-slate-900 border border-slate-700 text-xs text-white px-2 py-1 rounded group-hover/tooltip:scale-100 z-10 whitespace-nowrap">
                 {getRankFromKD(parseFloat(profileData.overallKD)).name}
               </span>
-            </div>*/}
+            </div>
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-4">
               <div className="bg-slate-800/80 rounded-xl px-4 py-2 border border-slate-700/50 flex flex-col items-center">
                 <span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">K/D Média</span>

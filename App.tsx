@@ -328,7 +328,7 @@ const App: React.FC = () => {
           <MatchHistory matches={matches} players={players} seasons={seasons} selectedSeasonId={selectedSeasonId} />
         ) : view === 'profile' ? (
           <PlayerProfile 
-            player={players.find(p => p.id === selectedPlayerId) || null}
+            playerStats={currentRanking.find(p => p.playerId === selectedPlayerId) || null}
             matches={matches}
             selectedSeasonId={selectedSeasonId}
             onClose={() => { setView('ranking'); setSelectedPlayerId(null); }}
