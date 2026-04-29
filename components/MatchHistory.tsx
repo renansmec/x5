@@ -218,9 +218,28 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, seasons, 
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-emerald-500 to-rose-500"></div>
           <svg className="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
           <h3 className="text-xl font-bold text-slate-300 mb-2">Nenhuma partida registrada</h3>
-          <p className="text-slate-500 max-w-md mx-auto">
+          <p className="text-slate-500 max-w-md mx-auto mb-4">
             Nenhuma partida encontrada para a temporada selecionada.
           </p>
+          {matches.length > 0 && (
+            <div className="text-xs text-left bg-slate-900 p-4 rounded text-rose-400 overflow-auto mb-4">
+              <strong>DEBUG INFO (Mande print disso para a IA):</strong><br/>
+              Temporada Selecionada ID: {selectedSeasonId}<br/>
+              Total de partidas no banco: {matches.length}<br/>
+              Primeira partida: SeasonID={matches[0]?.seasonId} | Date={matches[0]?.date}<br/>
+            </div>
+          )}
+          {matches.length === 0 && (
+            <div className="text-xs text-left bg-rose-500/10 border border-rose-500/50 p-4 rounded text-rose-400 overflow-auto">
+              <strong>⚠️ ATENÇÃO: POSSÍVEL ERRO DE RLS NO SUPABASE! ⚠️</strong><br/><br/>
+              Se você salvou partidas e elas desapareceram, o Supabase está bloqueando a leitura! Você precisa ir no painel do Supabase, clicar no SQL Editor e rodar:<br/><br/>
+              <code className="bg-slate-950 p-2 block mt-2 rounded">
+                ALTER TABLE matches DISABLE ROW LEVEL SECURITY;<br/>
+                GRANT ALL ON TABLE matches TO anon;<br/>
+                GRANT ALL ON TABLE matches TO authenticated;
+              </code>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">

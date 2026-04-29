@@ -31,17 +31,40 @@ const App: React.FC = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
+  const [cloudError, setCloudError] = useState<string>('');
+
   // Busca dados automaticamente ao carregar
   const fetchData = async () => {
     setIsLoading(true);
+    setCloudError('');
 
     try {
-      const [cloudPlayers, cloudSeasons, cloudStats, cloudMatches] = await Promise.all([
+      // Teste explícito para ver o erro
+      let matchesError = '';
+      try {
+        await db.getMatches();
+      } catch(e: any) {
+        matchesError = e.message || String(e);
+      }
+
+      const [cloudPlayers, cloudSeasons, cloudStats, cloudMatchesRaw] = await Promise.all([
         db.getPlayers(),
         db.getSeasons(),
         db.getStats(),
         db.getMatches()
       ]);
+      
+      let cloudMatches = cloudMatchesRaw;
+      if (cloudMatchesRaw && cloudMatchesRaw.length > 0 && cloudMatchesRaw[0]._error) {
+        setCloudError(`Erro ao buscar partidas do banco de dados: ${cloudMatchesRaw[0].message}`);
+        cloudMatches = [];
+      } else if (!cloudMatchesRaw) {
+        setCloudError(`Nenhum dado de partidas retornado. Verifique a API.`);
+        cloudMatches = [];
+      }
+
+      console.log("=== API RESPONSE ===");
+      console.log("Matches:", cloudMatches);
 
       if (cloudPlayers && cloudSeasons && cloudStats) {
         setPlayers(cloudPlayers || []);
@@ -189,10 +212,24 @@ const App: React.FC = () => {
     setMatches(newMatches);
     setStats(updatedStats);
     
-    // We can still try to save the single match just in case cloud is not fully dropping, 
-    // but the full sync below will ensure everything is consistent.
-    await db.saveMatch(match).catch(() => {}); 
-    await db.syncDatabase(players, seasons, updatedStats, newMatches);
+    try {
+      await db.saveMatch(match);
+      await db.syncDatabase(players, seasons, updatedStats, newMatches);
+    } catch (e: any) {
+      console.error(e);
+      const errMsg = e.message || "Erro desconhecido";
+      let alertMsg = `❌ Erro ao salvar partida na nuvem. Os dados estão apenas no seu navegador.\nErro: ${errMsg}`;
+      
+      if (errMsg.includes("PGRST204") || errMsg.includes("column") || errMsg.includes("PGRST102") || errMsg.includes("does not exist")) {
+        alertMsg = `❌ ERRO DE BANCO DE DADOS: Você precisa atualizar as tabelas do seu banco de dados adicionando as novas colunas, a tabela Matches e dar permissão de acesso!\n\nRode este SQL no SQL Editor do Supabase:\n\nALTER TABLE stats ADD COLUMN IF NOT EXISTS kills int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS deaths int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS assists int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS damage int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS "hsPercent" int DEFAULT 0;\n\nCREATE TABLE IF NOT EXISTS matches (\n  id text PRIMARY KEY,\n  "seasonId" text REFERENCES seasons(id) ON DELETE CASCADE,\n  map text,\n  "team1Name" text,\n  "team2Name" text,\n  "team1Score" int,\n  "team2Score" int,\n  "winningTeam" text,\n  date text,\n  players jsonb\n);\n\nGRANT ALL ON TABLE matches TO anon;\nGRANT ALL ON TABLE matches TO authenticated;`;
+      }
+      
+      if (errMsg.includes("row level security") || errMsg.includes("RLS")) {
+         alertMsg = `❌ ERRO RLS: A RLS da tabela 'matches' está bloqueando a alteração. Desative a RLS ou crie uma policy no Supabase!`;
+      }
+      
+      alert(alertMsg);
+    }
   };
 
   const handlePublishToCloud = async () => {
@@ -207,8 +244,12 @@ const App: React.FC = () => {
       
       let alertMsg = `❌ Falha ao publicar: ${errMsg}`;
       
-      if (errMsg.includes("PGRST204") || errMsg.includes("column") || errMsg.includes("PGRST102")) {
-        alertMsg = `❌ ERRO DE BANCO DE DADOS: Ocorreu um erro ao sincronizar com o Supabase.\n\nSim, você precisa atualizar as tabelas do seu banco de dados adicionando as novas colunas e criando a tabela Matches!\n\nRode este SQL no SQL Editor do Supabase:\n\nALTER TABLE stats ADD COLUMN IF NOT EXISTS kills int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS deaths int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS assists int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS damage int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS "hsPercent" int DEFAULT 0;\n\nCREATE TABLE IF NOT EXISTS matches (\n  id text PRIMARY KEY,\n  "seasonId" text REFERENCES seasons(id) ON DELETE CASCADE,\n  map text,\n  "team1Name" text,\n  "team2Name" text,\n  "team1Score" int,\n  "team2Score" int,\n  "winningTeam" text,\n  date text,\n  players jsonb\n);`;
+      if (errMsg.includes("PGRST204") || errMsg.includes("column") || errMsg.includes("PGRST102") || errMsg.includes("does not exist")) {
+        alertMsg = `❌ ERRO DE BANCO DE DADOS: Ocorreu um erro ao sincronizar com o Supabase.\n\nVocê precisa atualizar as tabelas do seu banco de dados adicionando as novas colunas, a tabela Matches e dar permissão de acesso!\n\nRode este SQL no SQL Editor do Supabase:\n\nALTER TABLE stats ADD COLUMN IF NOT EXISTS kills int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS deaths int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS assists int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS damage int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS "hsPercent" int DEFAULT 0;\n\nCREATE TABLE IF NOT EXISTS matches (\n  id text PRIMARY KEY,\n  "seasonId" text REFERENCES seasons(id) ON DELETE CASCADE,\n  map text,\n  "team1Name" text,\n  "team2Name" text,\n  "team1Score" int,\n  "team2Score" int,\n  "winningTeam" text,\n  date text,\n  players jsonb\n);\n\nGRANT ALL ON TABLE matches TO anon;\nGRANT ALL ON TABLE matches TO authenticated;`;
+      }
+      
+      if (errMsg.includes("row level security") || errMsg.includes("RLS")) {
+         alertMsg = `❌ ERRO RLS: A RLS da tabela 'matches' está bloqueando a alteração. Desative a RLS ou crie uma policy no Supabase!`;
       }
       
       alert(alertMsg);
@@ -263,6 +304,12 @@ const App: React.FC = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 mt-8">
+        {cloudError && (
+          <div className="bg-red-500/20 border-l-4 border-red-500 p-4 mb-4 rounded-r-lg">
+            <p className="text-red-400 font-bold mb-1">⚠️ ALERTA DO SISTEMA (Envie Print para IA):</p>
+            <p className="text-white whitespace-pre-wrap font-mono text-xs">{cloudError}</p>
+          </div>
+        )}
         {view === 'ranking' ? (
           <div className="space-y-8 animate-in fade-in duration-500">
              <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -383,7 +430,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 dos Amigos &bull; SEASON 5
+          X5 dos Amigos &bull; SEASON 4
         </p>
       </footer>
     </div>

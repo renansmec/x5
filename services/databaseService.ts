@@ -1,3 +1,4 @@
+
 import { Player, Season, PlayerStats } from '../types';
 
 // ==================================================================================
@@ -159,27 +160,47 @@ export const db = {
       
       if (res && Array.isArray(res)) {
         // Normalizar chaves para camelCase caso o banco tenha criado em minúsculas
-        const normalized = res.map(m => ({
-          id: m.id,
-          seasonId: m.seasonId || m.seasonid,
-          map: m.map,
-          team1Name: m.team1Name || m.team1name,
-          team2Name: m.team2Name || m.team2name,
-          team1Score: m.team1Score !== undefined ? m.team1Score : m.team1score,
-          team2Score: m.team2Score !== undefined ? m.team2Score : m.team2score,
-          winningTeam: m.winningTeam || m.winningteam,
-          date: m.date,
-          // Se o players vier como string (algum erro de importação), fazemos o parse
-          players: typeof m.players === 'string' ? JSON.parse(m.players) : (m.players || [])
-        }));
+        const normalized = res.map(m => {
+          let parsedPlayers = [];
+          if (Array.isArray(m.players)) {
+            parsedPlayers = m.players;
+          } else if (typeof m.players === 'string') {
+            try {
+              parsedPlayers = JSON.parse(m.players);
+            } catch(e) {
+              console.error("Failed to parse players:", m.players);
+              parsedPlayers = [];
+            }
+          } else if (m.players) {
+            parsedPlayers = m.players;
+          }
+
+          return {
+            id: m.id,
+            seasonId: m.seasonId || m.seasonid,
+            map: m.map,
+            team1Name: m.team1Name || m.team1name,
+            team2Name: m.team2Name || m.team2name,
+            team1Score: m.team1Score !== undefined ? m.team1Score : m.team1score,
+            team2Score: m.team2Score !== undefined ? m.team2Score : m.team2score,
+            winningTeam: m.winningTeam || m.winningteam,
+            date: m.date,
+            players: parsedPlayers
+          };
+        });
         
-        normalized.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        normalized.sort((a, b) => {
+          const tA = a.date ? new Date(a.date).getTime() : 0;
+          const tB = b.date ? new Date(b.date).getTime() : 0;
+          return tB - tA;
+        });
         return normalized;
       }
       return res;
-    } catch (e) { 
+    } catch (e: any) { 
       console.error('getMatches fail:', e);
-      return null; 
+      // Retornar um erro falso que a interface consiga ler
+      return [{_error: true, message: e.message || String(e)}];
     }
   },
 
