@@ -1,4 +1,3 @@
-
 import { Player, Season, PlayerStats } from '../types';
 
 // ==================================================================================
@@ -70,7 +69,7 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
   // Muitas vezes o Supabase exige um filtro para DELETE. Usaremos 'id.neq.0' como "todos" se a query estiver vazia no DELETE.
   let safeQuery = query;
   if (method === 'DELETE' && (!query || query === '?select=*')) {
-     safeQuery = '?id=neq.0'; // Hack para selecionar "todos" se IDs forem strings ou numeros != 0
+     safeQuery = '?id=not.is.null'; // Hack para selecionar "todos" 
   }
 
   const endpoint = `${cleanUrl}/rest/v1/${table}${safeQuery}`;
@@ -135,11 +134,53 @@ export const db = {
   },
 
   async getStats(): Promise<PlayerStats[] | null> {
-    try { return await supabaseFetch('stats', 'GET', null, '?select=*'); } catch { return null; }
+    try { 
+      const res = await supabaseFetch('stats', 'GET', null, '?select=*'); 
+      if (res && Array.isArray(res)) {
+        return res.map(s => ({
+          id: s.id,
+          playerId: s.playerId || s.playerid,
+          seasonId: s.seasonId || s.seasonid,
+          matches: s.matches,
+          kills: s.kills,
+          deaths: s.deaths,
+          assists: s.assists,
+          damage: s.damage,
+          hsPercent: s.hsPercent !== undefined ? s.hsPercent : s.hspercent
+        }));
+      }
+      return res;
+    } catch { return null; }
   },
 
   async getMatches(): Promise<any[] | null> {
-    try { return await supabaseFetch('matches', 'GET', null, '?select=*&order=date.desc'); } catch { return null; }
+    try { 
+      const res = await supabaseFetch('matches', 'GET', null, '?select=*'); 
+      
+      if (res && Array.isArray(res)) {
+        // Normalizar chaves para camelCase caso o banco tenha criado em minúsculas
+        const normalized = res.map(m => ({
+          id: m.id,
+          seasonId: m.seasonId || m.seasonid,
+          map: m.map,
+          team1Name: m.team1Name || m.team1name,
+          team2Name: m.team2Name || m.team2name,
+          team1Score: m.team1Score !== undefined ? m.team1Score : m.team1score,
+          team2Score: m.team2Score !== undefined ? m.team2Score : m.team2score,
+          winningTeam: m.winningTeam || m.winningteam,
+          date: m.date,
+          // Se o players vier como string (algum erro de importação), fazemos o parse
+          players: typeof m.players === 'string' ? JSON.parse(m.players) : (m.players || [])
+        }));
+        
+        normalized.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        return normalized;
+      }
+      return res;
+    } catch (e) { 
+      console.error('getMatches fail:', e);
+      return null; 
+    }
   },
 
   async saveMatch(match: any): Promise<boolean> {
@@ -201,21 +242,21 @@ export const db = {
 
       if (normalizedStats.length > 0) await supabaseFetch('stats', 'POST', normalizedStats);
       
-      if (matches && matches.length > 0) {
-        const normalizedMatches = matches.map(m => ({
-          id: m.id || '',
-          seasonId: m.seasonId || '',
-          map: m.map || '',
-          team1Name: m.team1Name || '',
-          team2Name: m.team2Name || '',
-          team1Score: m.team1Score || 0,
-          team2Score: m.team2Score || 0,
-          winningTeam: m.winningTeam || '',
-          date: m.date || new Date().toISOString(),
-          players: m.players || []
-        }));
-        await supabaseFetch('matches', 'POST', normalizedMatches).catch(e => console.error('Erro ao sincronizar matches', e));
-      }
+        if (matches && matches.length > 0) {
+          const normalizedMatches = matches.map(m => ({
+            id: m.id || '',
+            seasonId: m.seasonId || '',
+            map: m.map || '',
+            team1Name: m.team1Name || '',
+            team2Name: m.team2Name || '',
+            team1Score: m.team1Score || 0,
+            team2Score: m.team2Score || 0,
+            winningTeam: m.winningTeam || '',
+            date: m.date || new Date().toISOString(),
+            players: m.players || []
+          }));
+          await supabaseFetch('matches', 'POST', normalizedMatches);
+        }
 
       console.log("Sincronização concluída com sucesso.");
     } catch (error) {
