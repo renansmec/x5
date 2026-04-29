@@ -6,6 +6,7 @@ import { getRankFromKD } from '../utils';
 interface RankingTableProps {
   data: FullRankingEntry[];
   onPlayerClick?: (playerId: string) => void;
+  seasonId?: string;
 }
 
 type SortKey = keyof FullRankingEntry;
@@ -16,7 +17,7 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick }) => {
+const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick, seasonId = "default" }) => {
   // Estado padrão: Ordenado por KD descendente (maior para o menor)
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: 'kd',
@@ -33,24 +34,24 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick }) => {
       currentRankingMap[p.playerId] = index + 1;
     });
 
-    const storedDataHash = localStorage.getItem('rankingDataHash');
+    const storedDataHash = localStorage.getItem(`rankingDataHash_${seasonId}`);
     const currentDataHash = JSON.stringify(data);
 
-    let prevMap: Record<string, number> = JSON.parse(localStorage.getItem('previousRanking') || '{}');
-    let currMap: Record<string, number> = JSON.parse(localStorage.getItem('currentRanking') || '{}');
+    let prevMap: Record<string, number> = JSON.parse(localStorage.getItem(`previousRanking_${seasonId}`) || '{}');
+    let currMap: Record<string, number> = JSON.parse(localStorage.getItem(`currentRanking_${seasonId}`) || '{}');
 
     if (storedDataHash !== currentDataHash) {
       if (Object.keys(currMap).length > 0) {
         prevMap = currMap;
-        localStorage.setItem('previousRanking', JSON.stringify(prevMap));
+        localStorage.setItem(`previousRanking_${seasonId}`, JSON.stringify(prevMap));
       } else {
         // Primeira vez carregando, define prevMap igual ao atual para não mostrar todos como NEW
         prevMap = currentRankingMap;
-        localStorage.setItem('previousRanking', JSON.stringify(prevMap));
+        localStorage.setItem(`previousRanking_${seasonId}`, JSON.stringify(prevMap));
       }
       currMap = currentRankingMap;
-      localStorage.setItem('currentRanking', JSON.stringify(currMap));
-      localStorage.setItem('rankingDataHash', currentDataHash);
+      localStorage.setItem(`currentRanking_${seasonId}`, JSON.stringify(currMap));
+      localStorage.setItem(`rankingDataHash_${seasonId}`, currentDataHash);
     } else {
       // Se não mudou, mas prevMap está vazio por algum motivo, usa o currMap
       if (Object.keys(prevMap).length === 0 && Object.keys(currMap).length > 0) {
@@ -68,7 +69,7 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick }) => {
     });
 
     setTrendMap(newTrendMap);
-  }, [data]);
+  }, [data, seasonId]);
 
   const handleSort = (key: SortKey) => {
     setSortConfig((current) => ({
@@ -135,14 +136,14 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick }) => {
         <thead className="bg-slate-900/80 font-gaming uppercase tracking-wider text-sm">
           <tr>
             <th className="px-6 py-4 text-slate-500 w-16">#</th>
-            <th className="px-6 py-4 text-slate-500 text-center w-20">Trend</th>
+            <th className="px-6 py-4 text-slate-500 text-center w-20">Tend.</th>
             {renderHeader("Nick", "nick", "text-slate-300")}
             {renderHeader("Patente", "kd", "text-amber-400")}
-            {renderHeader("Matches", "matches", "text-slate-300")}
-            {renderHeader("Kills", "kills", "text-emerald-400")}
-            {renderHeader("Deaths", "deaths", "text-rose-400")}
+            {renderHeader("Part.", "matches", "text-slate-300")}
+            {renderHeader("Vítim.", "kills", "text-emerald-400")}
+            {renderHeader("Mortes", "deaths", "text-rose-400")}
             {renderHeader("Assists", "assists", "text-sky-400")}
-            {renderHeader("Dano", "damage", "text-orange-400")}
+            {renderHeader("DMG", "damage", "text-orange-400")}
             {renderHeader("%HS", "hsPercent", "text-purple-400")}
             {renderHeader("K/D", "kd", "text-yellow-400", "text-left", "Cálculo: Vítimas / Mortes")}
           </tr>
