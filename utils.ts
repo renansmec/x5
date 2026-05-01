@@ -12,9 +12,9 @@ export const PATENTES = [
   { name: "AK 1", image: "ak-1.png" },
   { name: "AK 2", image: "ak-2.png" },
   { name: "AK Cruzada", image: "ak-cruzada.png" },
+  { name: "Xerife", image: "xerife.png" },
   { name: "Águia 1", image: "aguia-1.png" },
   { name: "Águia 2", image: "aguia-2.png" },
-  { name: "Xerife", image: "xerife.png" },
   { name: "Supremo", image: "supremo.png" },
   { name: "Global", image: "global.png" }
 ];
