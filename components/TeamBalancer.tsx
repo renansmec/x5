@@ -103,17 +103,22 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
     }));
 
     // 4. Algoritmo de Distribuição (Snake/Greedy balanceado)
-    // Para cada jogador (do mais forte ao mais fraco), coloca no time que tem a MENOR soma de KD atual.
+    // Para cada jogador (do mais forte ao mais fraco), coloca no time que tem a MENOR soma de KD atual, respeitando o limite de jogadores.
+    const maxPlayersPerTeam = totalPlayersNeeded / numTeams;
+    
     sortedPlayers.forEach(player => {
-      // Encontra o time com a menor soma de KD no momento
-      let targetTeam = teams[0];
-      for (let i = 1; i < teams.length; i++) {
-        if (teams[i].totalKd < targetTeam.totalKd) {
-          targetTeam = teams[i];
-        } else if (teams[i].totalKd === targetTeam.totalKd) {
+      // 4.1 Filtra os times que ainda têm vagas
+      const availableTeams = teams.filter(t => t.players.length < maxPlayersPerTeam);
+      
+      // Encontra o time com a menor soma de KD no momento dentyre os disponíveis
+      let targetTeam = availableTeams[0];
+      for (let i = 1; i < availableTeams.length; i++) {
+        if (availableTeams[i].totalKd < targetTeam.totalKd) {
+          targetTeam = availableTeams[i];
+        } else if (availableTeams[i].totalKd === targetTeam.totalKd) {
           // Desempate: quem tem menos jogadores
-          if (teams[i].players.length < targetTeam.players.length) {
-            targetTeam = teams[i];
+          if (availableTeams[i].players.length < targetTeam.players.length) {
+            targetTeam = availableTeams[i];
           }
         }
       }
