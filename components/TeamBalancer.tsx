@@ -235,11 +235,13 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
                       <div key={p.playerId} className="p-4 flex justify-between items-center hover:bg-white/5 transition-colors">
                         <div className="flex items-center gap-3">
                           <span className="font-bold text-slate-200">{p.nick}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
                           <span className="hidden sm:inline-block">
                             <img src={`/patentes/${getRankFromKD(p.kd).image}`} alt={getRankFromKD(p.kd).name} className="h-6 object-contain filter drop-shadow-sm" title={getRankFromKD(p.kd).name} />
                           </span>
+                          <span className="text-sm font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">KD {p.kd.toFixed(2)}</span>
                         </div>
-                        <span className="text-sm font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded border border-slate-800">KD {p.kd.toFixed(2)}</span>
                       </div>
                     ))}
                   </div>
