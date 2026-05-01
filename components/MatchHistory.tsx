@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MatchRecord, Player, Season } from '../types';
 
 interface MatchHistoryProps {
@@ -10,8 +10,22 @@ interface MatchHistoryProps {
 
 const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, seasons, selectedSeasonId }) => {
   const [selectedMatch, setSelectedMatch] = useState<MatchRecord | null>(null);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const matchesPerPage = 10;
 
-  const filteredMatches = matches.filter(m => m.seasonId === selectedSeasonId);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedSeasonId]);
+
+  const filteredMatches = matches
+    .filter(m => m.seasonId === selectedSeasonId)
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const totalPages = Math.ceil(filteredMatches.length / matchesPerPage);
+  const paginatedMatches = filteredMatches.slice(
+    (currentPage - 1) * matchesPerPage,
+    currentPage * matchesPerPage
+  );
 
   if (selectedMatch) {
     const season = seasons.find(s => s.id === selectedMatch.seasonId);
@@ -243,7 +257,7 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, seasons, 
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4">
-          {filteredMatches.map((match) => {
+          {paginatedMatches.map((match) => {
             const t1Name = match.team1Name || 'TIME 1';
             const t2Name = match.team2Name || 'TIME 2';
             const t1Score = match.team1Score !== undefined ? match.team1Score : (match.winningTeam.toUpperCase() === 'TIME 1' ? 13 : 10);
@@ -306,6 +320,40 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, seasons, 
               </div>
             );
           })}
+        </div>
+      )}
+      
+      {totalPages > 1 && !selectedMatch && filteredMatches.length > 0 && (
+        <div className="flex justify-center items-center gap-2 mt-8 mb-4">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-50 hover:bg-slate-700 transition font-bold cursor-pointer"
+          >
+            Anterior
+          </button>
+          <div className="flex items-center flex-wrap justify-center gap-2">
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentPage(i + 1)}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm transition cursor-pointer ${
+                  currentPage === i + 1 
+                    ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20' 
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                }`}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 disabled:opacity-50 hover:bg-slate-700 transition font-bold cursor-pointer"
+          >
+            Próxima
+          </button>
         </div>
       )}
     </div>
