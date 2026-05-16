@@ -129,9 +129,9 @@ const App: React.FC = () => {
     return currentStats;
   }, [stats, selectedSeasonId, players, seasons]);
 
-  // Filtra dados para o gráfico (apenas jogadores com 3+ partidas)
+  // Filtra dados para o gráfico
   const chartData = useMemo(() => {
-    return currentRanking.filter(p => p.matches >= 3);
+    return currentRanking;
   }, [currentRanking]);
 
  // Admin Actions Handlers
