@@ -1,26 +1,33 @@
-import React, { useMemo } from 'react';
-import { Player, MatchRecord, FullRankingEntry } from '../types';
+import React, { useMemo, useState } from 'react';
+import { Player, MatchRecord, PlayerStats, Season } from '../types';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { getRankFromKD } from '../utils';
 
 interface PlayerProfileProps {
-  playerStats: FullRankingEntry | null;
+  playerId: string | null;
+  players: Player[];
+  seasons: Season[];
+  stats: PlayerStats[];
   matches: MatchRecord[];
-  selectedSeasonId: string;
+  initialSeasonId: string;
   onClose: () => void;
 }
 
-const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, selectedSeasonId, onClose }) => {
-  const player = playerStats;
+const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, seasons, stats, matches, initialSeasonId, onClose }) => {
+  const [localSeasonId, setLocalSeasonId] = useState<string>(initialSeasonId || (seasons.length > 0 ? seasons[0].id : ''));
+  
+  const player = players.find(p => p.id === playerId);
+  
   if (!player) return null;
 
   const profileData = useMemo(() => {
+    const seasonStats = stats.find(s => s.playerId === playerId && s.seasonId === localSeasonId);
     // View strictly based on selected season matching
-    const seasonMatches = matches.filter(m => m.seasonId === selectedSeasonId);
+    const seasonMatches = matches.filter(m => m.seasonId === localSeasonId);
     
     // Find all matches where player participated
     const playerParticipated = seasonMatches.filter(m => 
-      m.players.some(p => p.playerId === player.playerId || p.nick === player.nick)
+      m.players.some(p => p.playerId === player.id || p.nick === player.nick)
     );
 
     // Sort ascending by date to show history from left to right
@@ -40,7 +47,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, sel
     const mapStatsMap: Record<string, { matches: number, wins: number }> = {};
 
     chronologicalMatches.forEach((m, idx) => {
-      const pRecord = m.players.find(p => p.playerId === player.playerId || p.nick === player.nick);
+      const pRecord = m.players.find(p => p.playerId === player.id || p.nick === player.nick);
       if (!pRecord) return; 
 
       const t1Name = m.team1Name || 'TIME 1';
@@ -92,10 +99,16 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, sel
       });
     });
 
-    const totalMatches = player.matches;
+    const totalMatches = seasonStats ? seasonStats.matches : 0;
     const winRate = (wins + losses) > 0 ? ((wins / (wins + losses)) * 100).toFixed(1) : '0.0';
-    const overallKD = player.kd.toFixed(2);
-    const averageHS = player.hsPercent || 0;
+    
+    let rawOverallKD = 0;
+    if (seasonStats) {
+      rawOverallKD = seasonStats.deaths === 0 ? seasonStats.kills : seasonStats.kills / seasonStats.deaths;
+    }
+    const overallKD = rawOverallKD.toFixed(2);
+    
+    const averageHS = seasonStats ? (seasonStats.hsPercent || 0) : 0;
 
     const mapStats = Object.entries(mapStatsMap).map(([mapName, stats]) => ({
       mapName,
@@ -114,19 +127,32 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerStats, matches, sel
       averageHS,
       mapStats
     };
-  }, [matches, player, selectedSeasonId]);
+  }, [matches, player, localSeasonId, stats, playerId]);
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-8 duration-500">
-      <button 
-        onClick={onClose}
-        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-        </svg>
-        Voltar para o ranking
-      </button>
+      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+        <button 
+          onClick={onClose}
+          className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+          </svg>
+          Voltar para o ranking
+        </button>
+
+        <div className="w-full md:w-auto">
+          <select 
+            value={localSeasonId} 
+            onChange={(e) => setLocalSeasonId(e.target.value)} 
+            className="w-full md:w-64 bg-slate-900/80 border border-slate-700/50 rounded-xl px-4 py-2 font-bold text-slate-200 outline-none focus:ring-2 focus:ring-purple-500 shadow-lg text-sm"
+          >
+            {seasons.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            {seasons.length === 0 && <option value="">Nenhuma temporada</option>}
+          </select>
+        </div>
+      </div>
 
       <div className="bg-slate-900/80 border border-slate-700/50 rounded-3xl p-8 mb-8 overflow-hidden shadow-2xl relative">
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-emerald-500 to-blue-500 text-transparent"></div>

@@ -384,13 +384,15 @@ const App: React.FC = () => {
                </div>
              )}
           </div>
-        ) : view === 'history' ? (
           <MatchHistory matches={matches} players={players} seasons={seasons} selectedSeasonId={selectedSeasonId} />
         ) : view === 'profile' ? (
           <PlayerProfile 
-            playerStats={currentRanking.find(p => p.playerId === selectedPlayerId) || null}
+            playerId={selectedPlayerId}
+            players={players}
+            stats={stats}
+            seasons={seasons}
             matches={matches}
-            selectedSeasonId={selectedSeasonId}
+            initialSeasonId={selectedSeasonId}
             onClose={() => { setView('ranking'); setSelectedPlayerId(null); }}
           />
         ) : view === 'balancer' ? (
