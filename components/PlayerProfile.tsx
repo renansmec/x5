@@ -279,7 +279,7 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
                 <div key={stat.mapName} className="bg-slate-800/50 p-4 rounded-xl border border-slate-700 hover:border-slate-600 transition-colors">
                   <div className="flex justify-between items-center mb-2">
                     <span className="font-bold text-lg text-slate-200">{stat.mapName}</span>
-                    <span className="text-teal-400 font-gaming font-bold text-lg">{stat.winRate}%</span>
+                   <span>winrate <span className="text-teal-400 font-gaming font-bold text-lg">{stat.winRate}%</span></span>
                   </div>
                   <div className="flex justify-between text-sm text-slate-400">
                     <span>Partidas: <span className="text-slate-300 font-semibold">{stat.matches}</span></span>
