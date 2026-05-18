@@ -565,7 +565,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               </h3>
 
               <div className="flex bg-slate-900 p-1 rounded-lg border border-slate-700">
-                {/*<button 
+                <button 
                   onClick={() => setFormMode('add')} 
                   className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${formMode === 'add' ? 'bg-slate-700 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
                 >
@@ -580,7 +580,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                 <button 
                   onClick={() => setFormMode('image')} 
                   className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${formMode === 'image' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
-                >*/}
+                >
                   ADD PARTIDA
                 </button>
               </div>
