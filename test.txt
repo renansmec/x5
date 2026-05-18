@@ -1,0 +1,4 @@
+                 <RankingTable 
+                   data={currentRanking} 
+                   onPlayerClick={(playerId) => { setSelectedPlayerId(playerId); setView('profile'); }} 
+                 />

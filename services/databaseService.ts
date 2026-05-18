@@ -5,8 +5,8 @@ import { Player, Season, PlayerStats } from '../types';
 // 🚨 ÁREA DE CONFIGURAÇÃO OBRIGATÓRIA PARA ACESSO PÚBLICO 🚨
 // Para que o ranking apareça para todos SEM pedir senha, cole suas chaves abaixo.
 // ==================================================================================
-const HARDCODED_SUPABASE_URL = "https://seiwinqvzsfwupnvrygf.supabase.co"; 
-const HARDCODED_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNlaXdpbnF2enNmd3VwbnZyeWdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNTY1MDAsImV4cCI6MjA4NTgzMjUwMH0.cCqNfGnGlEjQU5D0nlD3avC5slaXsBySWwdFt-zsYQk";
+const HARDCODED_SUPABASE_URL = ""; 
+const HARDCODED_SUPABASE_ANON_KEY = "";
 // ==================================================================================
 
 const getEnvVar = (key: string): string => {
@@ -127,7 +127,18 @@ export const db = {
   },
 
   async getPlayers(): Promise<Player[] | null> {
-    try { return await supabaseFetch('players', 'GET', null, '?select=*'); } catch { return null; }
+    try { 
+      const res = await supabaseFetch('players', 'GET', null, '?select=*'); 
+      if (res && Array.isArray(res)) {
+        return res.map(p => ({
+          id: p.id,
+          nick: p.nick,
+          steamUrl: p.steamUrl || p.steamurl || undefined,
+          avatarUrl: p.avatarUrl || p.avatarurl || undefined
+        }));
+      }
+      return res;
+    } catch { return null; }
   },
 
   async getSeasons(): Promise<Season[] | null> {
@@ -237,7 +248,9 @@ export const db = {
       // Normalizando chaves para evitar PGRST102 (PostgREST exige que todos os objetos do array tenham mesmas chaves)
       const normalizedPlayers = players.map(p => ({
         id: p.id || '',
-        nick: p.nick || ''
+        nick: p.nick || '',
+        steamUrl: p.steamUrl || null,
+        avatarUrl: p.avatarUrl || null
       }));
       
       const normalizedSeasons = seasons.map(s => ({

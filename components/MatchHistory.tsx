@@ -13,6 +13,11 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, seasons, 
   const [currentPage, setCurrentPage] = useState<number>(1);
   const matchesPerPage = 10;
 
+  const getPlayerAvatar = (nick: string, playerId?: string) => {
+    const p = players.find(player => player.id === playerId || player.nick === nick);
+    return p?.avatarUrl;
+  };
+
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedSeasonId]);
@@ -118,7 +123,9 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, seasons, 
                         const isMVP = i === 0 && selectedMatch.winningTeam.toUpperCase() === (selectedMatch.team1Name || 'TIME 1').toUpperCase();
                         return (
                           <tr key={i} className="hover:bg-slate-800/30 transition-colors">
-                            <td className="p-3 pl-6 font-bold text-slate-200 flex items-center gap-2">
+                            <td className="p-3 pl-6 font-bold text-slate-200 flex items-center gap-3">
+                              {/* @ts-ignore */}
+                              {getPlayerAvatar(p.nick, p.playerId) ? <img src={getPlayerAvatar(p.nick, p.playerId)} alt={p.nick} className="w-6 h-6 rounded-full object-cover shrink-0" /> : <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-bold text-slate-400 shrink-0">{p.nick.slice(0, 2).toUpperCase()}</div>}
                               {p.nick}
                               {isMVP && (
                                 <div className="relative group flex items-center">
@@ -185,7 +192,9 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, seasons, 
                         const isMVP = i === 0 && selectedMatch.winningTeam.toUpperCase() === (selectedMatch.team2Name || 'TIME 2').toUpperCase();
                         return (
                           <tr key={i} className="hover:bg-slate-800/30 transition-colors">
-                            <td className="p-3 pl-6 font-bold text-slate-200 flex items-center gap-2">
+                            <td className="p-3 pl-6 font-bold text-slate-200 flex items-center gap-3">
+                              {/* @ts-ignore */}
+                              {getPlayerAvatar(p.nick, p.playerId) ? <img src={getPlayerAvatar(p.nick, p.playerId)} alt={p.nick} className="w-6 h-6 rounded-full object-cover shrink-0" /> : <div className="w-6 h-6 rounded-full bg-slate-700 flex items-center justify-center text-[8px] font-bold text-slate-400 shrink-0">{p.nick.slice(0, 2).toUpperCase()}</div>}
                               {p.nick}
                               {isMVP && (
                                 <div className="relative group flex items-center">

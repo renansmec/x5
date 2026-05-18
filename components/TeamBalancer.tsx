@@ -58,6 +58,7 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
         assists: s?.assists || 0,
         damage: s?.damage || 0,
         nick: p.nick,
+        avatarUrl: p.avatarUrl,
         kd: kd,
         damagePerMatch: (s?.matches || 0) > 0 ? (s?.damage || 0) / (s?.matches || 1) : 0
       };
@@ -198,9 +199,13 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
                     ${!isSelected && selectedPlayerIds.length >= totalPlayersNeeded ? 'opacity-40 cursor-not-allowed' : ''}
                   `}
                 >
-                  <div className="flex justify-between items-start">
-                    <span className={`font-bold truncate pr-2 ${isSelected ? 'text-white' : 'text-slate-300'}`}>{player.nick}</span>
-                    <span className={`text-xs font-mono px-1.5 py-0.5 rounded flex items-center gap-2 ${isSelected ? 'bg-purple-800 text-purple-200' : 'bg-slate-900 text-slate-500'}`}>
+                  <div className="flex justify-between items-center w-full">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      {/* @ts-ignore */}
+                      {player.avatarUrl ? <img src={player.avatarUrl} alt={player.nick} className="w-6 h-6 rounded-full object-cover shrink-0" /> : null}
+                      <span className={`font-bold truncate pr-2 ${isSelected ? 'text-white' : 'text-slate-300'}`}>{player.nick}</span>
+                    </div>
+                    <span className={`text-xs font-mono px-1.5 py-0.5 rounded flex shrink-0 items-center gap-1 ${isSelected ? 'bg-purple-800 text-purple-200' : 'bg-slate-900 text-slate-500'}`}>
                       <img src={`/patentes/${getRankFromKD(player.kd).image}`} alt={getRankFromKD(player.kd).name} className="h-4 object-contain" />
                       <span>{player.kd.toFixed(2)}</span>
                     </span>
@@ -239,6 +244,8 @@ const TeamBalancer: React.FC<TeamBalancerProps> = ({ players, seasons, stats }) 
                     {team.players.map(p => (
                       <div key={p.playerId} className="p-4 flex justify-between items-center hover:bg-white/5 transition-colors">
                         <div className="flex items-center gap-3">
+                          {/* @ts-ignore */}
+                          {p.avatarUrl ? <img src={p.avatarUrl} alt={p.nick} className="w-8 h-8 rounded-full object-cover" /> : <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-400">{p.nick.slice(0, 2).toUpperCase()}</div>}
                           <span className="font-bold text-slate-200">{p.nick}</span>
                         </div>
                         <div className="flex items-center gap-3">

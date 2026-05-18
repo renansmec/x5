@@ -136,14 +136,14 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick, season
         <thead className="bg-slate-900/80 font-gaming uppercase tracking-wider text-sm">
           <tr>
             <th className="px-6 py-4 text-slate-500 w-16">#</th>
-            <th className="px-6 py-4 text-slate-500 text-center w-20">Tend.</th>
+            <th className="px-6 py-4 text-slate-500 text-center w-20">Tendência</th>
             {renderHeader("Nick", "nick", "text-slate-300")}
             {renderHeader("Patente", "kd", "text-amber-400")}
-            {renderHeader("Part.", "matches", "text-slate-300")}
-            {renderHeader("Vítim.", "kills", "text-emerald-400")}
+            {renderHeader("Partidas", "matches", "text-slate-300")}
+            {renderHeader("Vítimas", "kills", "text-emerald-400")}
             {renderHeader("Mortes", "deaths", "text-rose-400")}
             {renderHeader("Assists", "assists", "text-sky-400")}
-            {renderHeader("DMG", "damage", "text-orange-400")}
+            {renderHeader("Dano", "damage", "text-orange-400")}
             {renderHeader("%HS", "hsPercent", "text-purple-400")}
             {renderHeader("K/D", "kd", "text-yellow-400", "text-left", "Cálculo: Vítimas / Mortes")}
           </tr>
@@ -196,7 +196,16 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick, season
                     </div>
                 </td>
                 <td className="px-6 py-4 font-bold text-slate-100 group-hover:text-purple-400 transition-colors underline decoration-transparent group-hover:decoration-purple-400 underline-offset-4">
-                  {player.nick}
+                  <div className="flex items-center gap-3">
+                    {player.avatarUrl ? (
+                      <img src={player.avatarUrl} alt={player.nick} className="w-8 h-8 rounded-full object-cover border border-slate-600 block" />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-600">
+                        {player.nick.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <span>{player.nick}</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4">
                   <span className="flex items-center gap-2 group/tooltip relative">
