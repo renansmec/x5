@@ -160,13 +160,24 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-emerald-500 to-blue-500 text-transparent"></div>
         <div className="flex flex-col md:flex-row items-center md:items-start gap-8 z-10 relative">
           
-          <div className="h-24 w-24 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-4xl font-gaming font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]">
-            {player.nick.substring(0, 2).toUpperCase()}
-          </div>
+          {player.avatarUrl ? (
+            <img src={player.avatarUrl} alt={player.nick} className="h-24 w-24 rounded-full object-cover shadow-[0_0_20px_rgba(168,85,247,0.4)] border-2 border-purple-500/50" />
+          ) : (
+            <div className="h-24 w-24 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-4xl font-gaming font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+              {player.nick.substring(0, 2).toUpperCase()}
+            </div>
+          )}
           
           <div className="flex-1 text-center md:text-left">
-            <h2 className="text-3xl md:text-4xl font-gaming font-bold text-white mb-2">
+            <h2 className="text-3xl md:text-4xl font-gaming font-bold text-white mb-2 flex items-center justify-center md:justify-start gap-4">
               {player.nick}
+              {player.steamUrl && (
+                <a href={player.steamUrl} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors" title="Ver perfil na Steam">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 0C5.373 0 0 5.373 0 12c0 4.887 2.923 9.096 7.158 10.975l.135-.205 2.115-3.21a6.438 6.438 0 0 1-.945-.494A4.184 4.184 0 0 1 7.21 16.5c0-1.85 1.258-3.393 2.996-3.951-1.396-1.503-2.193-3.6-2.193-5.918 0-4.04 3.016-7.394 6.843-7.794a8 8 0 0 1 7.828 7.794c0 1.954-.64 3.754-1.723 5.21l1.79 2.723A11.968 11.968 0 0 0 24 12c0-6.627-5.373-12-12-12zm3.328 17.5a4.267 4.267 0 0 1-1.742 2.709c-.066.04-.132.08-.198.117L11.082 17.2a4.42 4.42 0 0 1 1.704-.117l2.542 3.86a4.238 4.238 0 0 1-2.922 1.055 4.3 4.3 0 0 1-4.22-3.666 4.303 4.303 0 0 1 3.208-4.786l-2.022-3.085c-1.42.34-2.585 1.272-3.284 2.47a6.22 6.22 0 0 0-4.482 1.625 11.91 11.91 0 0 0-1.42 2.378c2.457 4.542 7.18 7.641 12.63 7.641a12.016 12.016 0 0 0 9.882-5.187l-1.79-2.722a4.248 4.248 0 0 1-2.924 1.055zm.086-12.87c-3.13 0-5.69 2.42-5.955 5.485h1.22c.264-2.4 2.316-4.27 4.735-4.27 2.628 0 4.767 2.138 4.767 4.767s-2.14 4.766-4.768 4.766c-.173 0-.342-.012-.51-.03l1.838 2.793a5.96 5.96 0 0 0 4.63-5.875c0-3.314-2.687-6.002-6.002-6.002h.046z"/>
+                  </svg>
+                </a>
+              )}
             </h2>
             <div className="inline-block mt-1 mb-2 group/tooltip relative">
               <img 
