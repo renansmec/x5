@@ -225,7 +225,7 @@ const App: React.FC = () => {
             <a href="http://187.103.16.34" target="_blank" rel="noopener noreferrer" className="px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 flex items-center gap-1">
               Skins <span className="text-[10px]">↗</span>
             </a>
-            <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'admin' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>
+           {/* <button onClick={() => setView('admin')} className={`px-4 sm:px-6 py-2 rounded-lg font-bold transition-all text-xs sm:text-sm whitespace-nowrap ${view === 'admin' ? 'bg-purple-600 text-white shadow-lg' : 'text-slate-400 hover:text-slate-200'}`}>Admin</button>*/}
 
           </nav>
         </div>
