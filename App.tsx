@@ -119,6 +119,8 @@ const App: React.FC = () => {
         return {
           ...s,
           nick: player?.nick || 'Desconhecido',
+          avatarUrl: player?.avatarUrl,
+          steamUrl: player?.steamUrl,
           kd: kdValue,
           damagePerMatch: s.matches === 0 ? 0 : s.damage / s.matches,
           hsPercent: s.hsPercent || 0
@@ -135,10 +137,12 @@ const App: React.FC = () => {
   }, [currentRanking]);
 
  // Admin Actions Handlers
-  const handleAddPlayer = (nick: string) => setPlayers(prev => [...prev, { id: `p${Date.now()}`, nick }]);
+  const handleAddPlayer = (nick: string, steamUrl?: string, avatarUrl?: string) => {
+    setPlayers(prev => [...prev, { id: `p${Date.now()}`, nick, steamUrl, avatarUrl }]);
+  };
   
-  const handleEditPlayer = (id: string, newNick: string) => {
-    setPlayers(prev => prev.map(p => p.id === id ? { ...p, nick: newNick } : p));
+  const handleEditPlayer = (id: string, updates: Partial<Player>) => {
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
   };
   
   const handleDeletePlayer = (id: string) => {
@@ -221,7 +225,7 @@ const App: React.FC = () => {
       let alertMsg = `❌ Erro ao salvar partida na nuvem. Os dados estão apenas no seu navegador.\nErro: ${errMsg}`;
       
       if (errMsg.includes("PGRST204") || errMsg.includes("column") || errMsg.includes("PGRST102") || errMsg.includes("does not exist")) {
-        alertMsg = `❌ ERRO DE BANCO DE DADOS: Você precisa atualizar as tabelas do seu banco de dados adicionando as novas colunas, a tabela Matches e dar permissão de acesso!\n\nRode este SQL no SQL Editor do Supabase:\n\nALTER TABLE stats ADD COLUMN IF NOT EXISTS kills int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS deaths int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS assists int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS damage int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS "hsPercent" int DEFAULT 0;\n\nCREATE TABLE IF NOT EXISTS matches (\n  id text PRIMARY KEY,\n  "seasonId" text REFERENCES seasons(id) ON DELETE CASCADE,\n  map text,\n  "team1Name" text,\n  "team2Name" text,\n  "team1Score" int,\n  "team2Score" int,\n  "winningTeam" text,\n  date text,\n  players jsonb\n);\n\nGRANT ALL ON TABLE matches TO anon;\nGRANT ALL ON TABLE matches TO authenticated;`;
+        alertMsg = `❌ ERRO DE BANCO DE DADOS: Você precisa atualizar as tabelas do seu banco de dados adicionando as novas colunas, a tabela Matches e dar permissão de acesso!\n\nRode este SQL no SQL Editor do Supabase:\n\nALTER TABLE stats ADD COLUMN IF NOT EXISTS kills int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS deaths int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS assists int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS damage int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS "hsPercent" int DEFAULT 0;\n\nALTER TABLE players ADD COLUMN IF NOT EXISTS "steamUrl" text;\nALTER TABLE players ADD COLUMN IF NOT EXISTS "avatarUrl" text;\n\nCREATE TABLE IF NOT EXISTS matches (\n  id text PRIMARY KEY,\n  "seasonId" text REFERENCES seasons(id) ON DELETE CASCADE,\n  map text,\n  "team1Name" text,\n  "team2Name" text,\n  "team1Score" int,\n  "team2Score" int,\n  "winningTeam" text,\n  date text,\n  players jsonb\n);\n\nGRANT ALL ON TABLE matches TO anon;\nGRANT ALL ON TABLE matches TO authenticated;`;
       }
       
       if (errMsg.includes("row level security") || errMsg.includes("RLS")) {
@@ -245,7 +249,7 @@ const App: React.FC = () => {
       let alertMsg = `❌ Falha ao publicar: ${errMsg}`;
       
       if (errMsg.includes("PGRST204") || errMsg.includes("column") || errMsg.includes("PGRST102") || errMsg.includes("does not exist")) {
-        alertMsg = `❌ ERRO DE BANCO DE DADOS: Ocorreu um erro ao sincronizar com o Supabase.\n\nVocê precisa atualizar as tabelas do seu banco de dados adicionando as novas colunas, a tabela Matches e dar permissão de acesso!\n\nRode este SQL no SQL Editor do Supabase:\n\nALTER TABLE stats ADD COLUMN IF NOT EXISTS kills int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS deaths int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS assists int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS damage int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS "hsPercent" int DEFAULT 0;\n\nCREATE TABLE IF NOT EXISTS matches (\n  id text PRIMARY KEY,\n  "seasonId" text REFERENCES seasons(id) ON DELETE CASCADE,\n  map text,\n  "team1Name" text,\n  "team2Name" text,\n  "team1Score" int,\n  "team2Score" int,\n  "winningTeam" text,\n  date text,\n  players jsonb\n);\n\nGRANT ALL ON TABLE matches TO anon;\nGRANT ALL ON TABLE matches TO authenticated;`;
+        alertMsg = `❌ ERRO DE BANCO DE DADOS: Ocorreu um erro ao sincronizar com o Supabase.\n\nVocê precisa atualizar as tabelas do seu banco de dados adicionando as novas colunas, a tabela Matches e dar permissão de acesso!\n\nRode este SQL no SQL Editor do Supabase:\n\nALTER TABLE stats ADD COLUMN IF NOT EXISTS kills int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS deaths int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS assists int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS damage int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS "hsPercent" int DEFAULT 0;\n\nALTER TABLE players ADD COLUMN IF NOT EXISTS "steamUrl" text;\nALTER TABLE players ADD COLUMN IF NOT EXISTS "avatarUrl" text;\n\nCREATE TABLE IF NOT EXISTS matches (\n  id text PRIMARY KEY,\n  "seasonId" text REFERENCES seasons(id) ON DELETE CASCADE,\n  map text,\n  "team1Name" text,\n  "team2Name" text,\n  "team1Score" int,\n  "team2Score" int,\n  "winningTeam" text,\n  date text,\n  players jsonb\n);\n\nGRANT ALL ON TABLE matches TO anon;\nGRANT ALL ON TABLE matches TO authenticated;`;
       }
       
       if (errMsg.includes("row level security") || errMsg.includes("RLS")) {
@@ -434,7 +438,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 dos Amigos &bull; SEASON 5
+          X5 dos Amigos &bull; SEASON 4
         </p>
       </footer>
     </div>
