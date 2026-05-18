@@ -66,11 +66,12 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
       else losses++;
 
       // K/D logic
-      const kd = pRecord.deaths === 0 ? pRecord.kills : Number((pRecord.kills / pRecord.deaths).toFixed(2));
-      const dateStr = new Date(m.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-      
       totalKills += pRecord.kills;
       totalDeaths += pRecord.deaths;
+      
+      const cumulativeKD = totalDeaths === 0 ? totalKills : Number((totalKills / totalDeaths).toFixed(2));
+      const matchKD = pRecord.deaths === 0 ? pRecord.kills : Number((pRecord.kills / pRecord.deaths).toFixed(2));
+      const dateStr = new Date(m.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
       
       if (typeof pRecord.hsPercent === 'number') {
         totalHS += pRecord.hsPercent;
@@ -90,7 +91,8 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
         matchId: m.id,
         date: dateStr,
         map: m.map,
-        kd: kd,
+        kd: cumulativeKD,
+        matchKD: matchKD,
         kills: pRecord.kills,
         deaths: pRecord.deaths,
         hsPercent: pRecord.hsPercent,
@@ -237,13 +239,20 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
                     itemStyle={{ color: '#d6d6d6' }}
                     labelStyle={{ color: '#94a3b8', marginBottom: '8px', fontWeight: 'bold' }}
                     formatter={(value: any, name: any, props: any) => {
-                      if (name === 'kd') return [<span style={{ color: '#a855f7', fontWeight: 'bold' }}>{value}</span>, 'K/D Ratio'];
+                      if (name === 'kd') return [<span style={{ color: '#a855f7', fontWeight: 'bold' }}>{value}</span>, 'K/D Acumulado'];
                       return [value, name];
                     }}
                     labelFormatter={(label, payload) => {
                       if (payload && payload.length > 0) {
                         const data = payload[0].payload;
-                        return `${data.date} - ${data.map} (${data.result})`;
+                        return (
+                          <div>
+                            <div style={{ marginBottom: '4px' }}>{data.date} - {data.map} ({data.result})</div>
+                            <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'normal' }}>
+                              K/D da Partida: {data.matchKD} ({data.kills}/{data.deaths})
+                            </div>
+                          </div>
+                        );
                       }
                       return label;
                     }}
