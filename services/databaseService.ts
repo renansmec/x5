@@ -127,18 +127,7 @@ export const db = {
   },
 
   async getPlayers(): Promise<Player[] | null> {
-    try { 
-      const res = await supabaseFetch('players', 'GET', null, '?select=*'); 
-      if (res && Array.isArray(res)) {
-        return res.map(p => ({
-          id: p.id,
-          nick: p.nick,
-          steamUrl: p.steamUrl || p.steamurl || undefined,
-          avatarUrl: p.avatarUrl || p.avatarurl || undefined
-        }));
-      }
-      return res;
-    } catch { return null; }
+    try { return await supabaseFetch('players', 'GET', null, '?select=*'); } catch { return null; }
   },
 
   async getSeasons(): Promise<Season[] | null> {
@@ -248,9 +237,7 @@ export const db = {
       // Normalizando chaves para evitar PGRST102 (PostgREST exige que todos os objetos do array tenham mesmas chaves)
       const normalizedPlayers = players.map(p => ({
         id: p.id || '',
-        nick: p.nick || '',
-        steamUrl: p.steamUrl || null,
-        avatarUrl: p.avatarUrl || null
+        nick: p.nick || ''
       }));
       
       const normalizedSeasons = seasons.map(s => ({
