@@ -2,8 +2,6 @@
 export interface Player {
   id: string;
   nick: string;
-  steamUrl?: string;
-  avatarUrl?: string;
 }
 
 export interface Season {
@@ -25,8 +23,6 @@ export interface PlayerStats {
 
 export interface FullRankingEntry extends PlayerStats {
   nick: string;
-  avatarUrl?: string;
-  steamUrl?: string;
   kd: number;
   damagePerMatch: number;
   trend?: number;

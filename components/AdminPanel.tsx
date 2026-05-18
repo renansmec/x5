@@ -8,8 +8,8 @@ interface AdminPanelProps {
   players: Player[];
   seasons: Season[];
   stats: PlayerStats[];
-  onAddPlayer: (nick: string, steamUrl?: string, avatarUrl?: string) => void;
-  onEditPlayer: (id: string, updates: Partial<Player>) => void;
+  onAddPlayer: (nick: string) => void;
+  onEditPlayer: (id: string, newNick: string) => void;
   onDeletePlayer: (id: string) => void;
   onAddSeason: (name: string) => void;
   onEditSeason: (id: string, newName: string) => void;
@@ -34,8 +34,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   globalSelectedSeasonId, setGlobalSelectedSeasonId
 }) => {
   const [newPlayerNick, setNewPlayerNick] = useState('');
-  const [newPlayerSteamUrl, setNewPlayerSteamUrl] = useState('');
-  const [isFetchingAvatar, setIsFetchingAvatar] = useState(false);
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null); // ID do jogador sendo editado
 
   const [newSeasonName, setNewSeasonName] = useState('');
@@ -122,91 +120,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setTimeout(() => setSaveSuccess(false), 3500);
   };
 
-  const fetchSteamAvatar = async (steamUrl: string) => {
-    if (!steamUrl) return null;
-    
-    // Se o usuário colou direto a URL de uma imagem
-    if (steamUrl.match(/\.(jpeg|jpg|gif|png)$/i)) {
-      return steamUrl;
-    }
-
-    try {
-      setIsFetchingAvatar(true);
-      
-      const xmlUrl = steamUrl.includes('?') ? `${steamUrl}&xml=1` : `${steamUrl}?xml=1`;
-      
-      // Tentativa 1: corsproxy.io com XML da Steam (forma mais confiável)
-      try {
-        const res = await fetch(`https://corsproxy.io/?${encodeURIComponent(xmlUrl)}`);
-        if (res.ok) {
-          const xml = await res.text();
-          const match = xml.match(/<avatarFull><!\[CDATA\[(.*?)\]\]><\/avatarFull>/i);
-          if (match && match[1]) return match[1];
-        }
-      } catch (e) {
-        console.warn("corsproxy failed");
-      }
-
-      // Tentativa 2: allorigins com XML
-      try {
-        const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(xmlUrl)}`);
-        const data = await res.json();
-        if (data.contents) {
-          const match = data.contents.match(/<avatarFull><!\[CDATA\[(.*?)\]\]><\/avatarFull>/i);
-          if (match && match[1]) return match[1];
-        }
-      } catch (e) {
-        console.warn("allorigins xml failed");
-      }
-
-      // Tentativa 3: allorigins com HTML (fallback og:image)
-      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(steamUrl)}`);
-      const data = await res.json();
-      const html = data.contents;
-      const match = html.match(/<meta property="og:image" content="([^"]+)"/);
-      return match ? match[1] : null;
-
-    } catch (e) {
-      console.error("Erro ao buscar avatar da Steam:", e);
-      return null;
-    } finally {
-      setIsFetchingAvatar(false);
-    }
-  };
-
-  const handleSavePlayerEdit = async () => {
+  const handleSavePlayerEdit = () => {
     if (editingPlayerId && newPlayerNick.trim()) {
-      const playerToEdit = players.find(p => p.id === editingPlayerId);
-      let avatarUrl: string | undefined = playerToEdit?.avatarUrl;
-      
-      // Se a URL do steam mudou, buscamos um novo avatar
-      if (newPlayerSteamUrl && newPlayerSteamUrl !== playerToEdit?.steamUrl) {
-        const fetchedAvatar = await fetchSteamAvatar(newPlayerSteamUrl);
-        if (fetchedAvatar) {
-          avatarUrl = fetchedAvatar;
-        } else {
-          // Se falhou ao buscar novo, podemos limpar ou manter. Vamos manter o undefied se era steam.
-          avatarUrl = undefined;
-        }
-      } else if (!newPlayerSteamUrl) {
-        avatarUrl = undefined; // Se limpou o campo, remove
-      }
-
-      onEditPlayer(editingPlayerId, { 
-        nick: newPlayerNick, 
-        steamUrl: newPlayerSteamUrl || undefined,
-        avatarUrl
-      });
+      onEditPlayer(editingPlayerId, newPlayerNick);
       setEditingPlayerId(null);
       setNewPlayerNick('');
-      setNewPlayerSteamUrl('');
     }
   };
 
   const startEditingPlayer = (player: Player) => {
     setEditingPlayerId(player.id);
     setNewPlayerNick(player.nick);
-    setNewPlayerSteamUrl(player.steamUrl || '');
   };
 
   const saveManualConfig = () => {
@@ -440,63 +364,28 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
               Gerenciar jogadores
             </h3>
-            <div className="flex flex-col gap-3 mb-6">
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={newPlayerNick} 
-                  onChange={(e) => setNewPlayerNick(e.target.value)} 
-                  placeholder={editingPlayerId ? "Novo nome..." : "Nick do player..."} 
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-blue-500 transition-all text-slate-100" 
-                />
-              </div>
-              <div className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={newPlayerSteamUrl} 
-                  onChange={(e) => setNewPlayerSteamUrl(e.target.value)} 
-                  placeholder="Link do perfil na Steam (opcional)" 
-                  className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-blue-500 transition-all text-sm text-slate-100" 
-                />
-                {editingPlayerId ? (
-                  <div className="flex gap-2">
-                     <button onClick={handleSavePlayerEdit} disabled={isFetchingAvatar} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-3 rounded-xl font-bold transition-all text-white disabled:opacity-50">
-                       {isFetchingAvatar ? 'Lendo...' : 'Salvar'}
-                     </button>
-                     <button onClick={() => { setEditingPlayerId(null); setNewPlayerNick(''); setNewPlayerSteamUrl(''); }} className="bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-xl font-bold transition-all text-slate-300">X</button>
-                  </div>
-                ) : (
-                  <button onClick={async () => { 
-                    if(newPlayerNick) { 
-                      let avatarUrl: string | undefined = undefined;
-                      if (newPlayerSteamUrl) {
-                        const fetchedAvatar = await fetchSteamAvatar(newPlayerSteamUrl);
-                        if (fetchedAvatar) avatarUrl = fetchedAvatar;
-                      }
-                      onAddPlayer(newPlayerNick, newPlayerSteamUrl || undefined, avatarUrl); 
-                      setNewPlayerNick(''); 
-                      setNewPlayerSteamUrl('');
-                    } 
-                  }} disabled={isFetchingAvatar} className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 text-white disabled:opacity-50">
-                    {isFetchingAvatar ? '...' : 'Add'}
-                  </button>
-                )}
-              </div>
+            <div className="flex gap-2 mb-6">
+              <input 
+                type="text" 
+                value={newPlayerNick} 
+                onChange={(e) => setNewPlayerNick(e.target.value)} 
+                placeholder={editingPlayerId ? "Novo nome..." : "Nick do player..."} 
+                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-blue-500 transition-all text-slate-100" 
+              />
+              {editingPlayerId ? (
+                <div className="flex gap-2">
+                   <button onClick={handleSavePlayerEdit} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-3 rounded-xl font-bold transition-all text-white">Salvar</button>
+                   <button onClick={() => { setEditingPlayerId(null); setNewPlayerNick(''); }} className="bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-xl font-bold transition-all text-slate-300">X</button>
+                </div>
+              ) : (
+                <button onClick={() => { if(newPlayerNick) { onAddPlayer(newPlayerNick); setNewPlayerNick(''); } }} className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 text-white">Add</button>
+              )}
             </div>
             <div className="max-h-56 overflow-y-auto space-y-2 custom-scrollbar pr-2">
               {players.length === 0 && <p className="text-xs text-slate-600 text-center py-4">Nenhum jogador cadastrado.</p>}
               {players.map(p => (
                 <div key={p.id} className={`flex justify-between items-center p-3 rounded-xl border transition-all ${editingPlayerId === p.id ? 'bg-blue-900/20 border-blue-500/50' : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800'}`}>
-                  <div className="flex items-center gap-3">
-                    {p.avatarUrl ? (
-                      <img src={p.avatarUrl} alt={p.nick} className="w-8 h-8 rounded-full object-cover border border-slate-600" />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-400 border border-slate-600">
-                        {p.nick.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    <span className="text-slate-200 font-bold">{p.nick}</span>
-                  </div>
+                  <span className="text-slate-200 font-bold">{p.nick}</span>
                   <div className="flex gap-1">
                     <button onClick={() => startEditingPlayer(p)} className="text-blue-400 p-2 hover:bg-blue-500/10 rounded-lg transition-colors" title="Renomear">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
@@ -581,7 +470,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   onClick={() => setFormMode('image')} 
                   className={`px-3 py-1.5 rounded text-xs font-bold transition-all ${formMode === 'image' ? 'bg-purple-600 text-white shadow' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                  ADD PARTIDA
+                  IMAGEM
                 </button>
               </div>
             </div>
