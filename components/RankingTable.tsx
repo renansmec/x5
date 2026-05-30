@@ -136,13 +136,13 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick, season
         <thead className="bg-slate-900/80 font-gaming uppercase tracking-wider text-sm">
           <tr>
             <th className="px-6 py-4 text-slate-500 w-16">#</th>
-            <th className="px-6 py-4 text-slate-500 text-center w-20">Tendência</th>
+            <th className="px-6 py-4 text-slate-500 text-center w-20">Tend.</th>
             {renderHeader("Nick", "nick", "text-slate-300")}
             {renderHeader("Patente", "kd", "text-amber-400")}
-            {renderHeader("Part", "matches", "text-slate-300")}
-            {renderHeader("Vít", "kills", "text-emerald-400")}
+            {renderHeader("Part.", "matches", "text-slate-300")}
+            {renderHeader("Vít.", "kills", "text-emerald-400")}
             {renderHeader("Mortes", "deaths", "text-rose-400")}
-            {renderHeader("Assists", "assists", "text-sky-400")}
+            {renderHeader("Assist.", "assists", "text-sky-400")}
             {renderHeader("Dano", "damage", "text-orange-400")}
             {renderHeader("%HS", "hsPercent", "text-purple-400")}
             {renderHeader("K/D", "kd", "text-yellow-400", "text-left", "Cálculo: Vítimas / Mortes")}
