@@ -119,6 +119,8 @@ const App: React.FC = () => {
         return {
           ...s,
           nick: player?.nick || 'Desconhecido',
+          avatarUrl: player?.avatarUrl,
+          steamUrl: player?.steamUrl,
           kd: kdValue,
           damagePerMatch: s.matches === 0 ? 0 : s.damage / s.matches,
           hsPercent: s.hsPercent || 0

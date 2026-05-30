@@ -136,13 +136,13 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick, season
         <thead className="bg-slate-900/80 font-gaming uppercase tracking-wider text-sm">
           <tr>
             <th className="px-6 py-4 text-slate-500 w-16">#</th>
-            <th className="px-6 py-4 text-slate-500 text-center w-20">Tend.</th>
+            <th className="px-6 py-4 text-slate-500 text-center w-20">Tendência</th>
             {renderHeader("Nick", "nick", "text-slate-300")}
             {renderHeader("Patente", "kd", "text-amber-400")}
             {renderHeader("Part.", "matches", "text-slate-300")}
-            {renderHeader("Vít.", "kills", "text-emerald-400")}
-            {renderHeader("Mortes", "deaths", "text-rose-400")}
-            {renderHeader("Assist.", "assists", "text-sky-400")}
+            {renderHeader("K", "kills", "text-emerald-400")}
+            {renderHeader("D", "deaths", "text-rose-400")}
+            {renderHeader("A", "assists", "text-sky-400")}
             {renderHeader("Dano", "damage", "text-orange-400")}
             {renderHeader("%HS", "hsPercent", "text-purple-400")}
             {renderHeader("K/D", "kd", "text-yellow-400", "text-left", "Cálculo: Vítimas / Mortes")}
@@ -195,8 +195,27 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick, season
                         )}
                     </div>
                 </td>
-                <td className="px-6 py-4 font-bold text-slate-100 group-hover:text-purple-400 transition-colors underline decoration-transparent group-hover:decoration-purple-400 underline-offset-4">
-                  {player.nick}
+                <td className="px-6 py-4 font-bold text-slate-100 group-hover:text-purple-400 transition-colors underline decoration-transparent group-hover:decoration-purple-400 underline-offset-4 cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    {player.avatarUrl ? (
+                      <div className="h-8 w-8 rounded-full overflow-hidden border border-slate-700 bg-slate-800 flex-shrink-0">
+                        <img 
+                          src={player.avatarUrl} 
+                          alt={player.nick} 
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            e.currentTarget.parentElement!.innerHTML = `<span class="flex items-center justify-center w-full h-full bg-gradient-to-br from-purple-600 to-blue-500 text-xs font-gaming font-bold text-white">${player.nick.substring(0, 2).toUpperCase()}</span>`;
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-8 w-8 rounded-full flex-shrink-0 bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-xs font-gaming font-bold text-white border border-slate-700">
+                        {player.nick.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <span>{player.nick}</span>
+                  </div>
                 </td>
                 <td className="px-6 py-4">
                   <span className="flex items-center gap-2 group/tooltip relative">

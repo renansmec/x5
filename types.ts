@@ -25,6 +25,8 @@ export interface PlayerStats {
 
 export interface FullRankingEntry extends PlayerStats {
   nick: string;
+  avatarUrl?: string;
+  steamUrl?: string;
   kd: number;
   damagePerMatch: number;
   trend?: number;
