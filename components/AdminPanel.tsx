@@ -132,21 +132,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
         targetUrl = 'https://' + targetUrl;
       }
       
-      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
-      const data = await res.json();
-      if (data && data.contents) {
-        const html = data.contents;
-        const match = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
-                      html.match(/<link\s+rel="image_src"\s+href="([^"]+)"/i);
-        if (match && match[1]) {
-          return match[1];
+      const proxies = [
+        `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
+        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
+      ];
+
+      for (const proxy of proxies) {
+        try {
+          const res = await fetch(proxy);
+          let html = '';
+          
+          if (proxy.includes('allorigins')) {
+            const data = await res.json();
+            html = data?.contents || '';
+          } else {
+            html = await res.text();
+          }
+
+          if (html) {
+             const match = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
+                           html.match(/<link\s+rel="image_src"\s+href="([^"]+)"/i) ||
+                           html.match(/<img[^>]+class="playerAvatar[^>]+src="([^"]+)"/i);
+             if (match && match[1]) {
+                // Ignore empty or default steam avatar if possible, though returning it is fine too
+                return match[1];
+             }
+          }
+        } catch (e) {
+          console.error("Erro com proxy", proxy, e);
         }
       }
     } catch (e) {
-      console.error("Erro ao buscar avatar", e);
+      console.error("Erro geral ao buscar avatar", e);
     }
     return null;
   }
+
+  // Pre-fetch automatically when URL is typed
+  useEffect(() => {
+    if (newPlayerSteamUrl && newPlayerSteamUrl.includes('steamcommunity.com') && !newPlayerAvatarUrl) {
+      const timer = setTimeout(async () => {
+        setIsPlayerSaving(true);
+        const fetched = await fetchSteamAvatar(newPlayerSteamUrl);
+        if (fetched) {
+          setNewPlayerAvatarUrl(fetched);
+        }
+        setIsPlayerSaving(false);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [newPlayerSteamUrl]);
 
   const handleAddPlayerSubmit = async () => {
     if (newPlayerNick.trim()) {
@@ -430,8 +465,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                   <input type="text" value={newPlayerNick} onChange={(e) => setNewPlayerNick(e.target.value)} placeholder="Nick..." className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-blue-500 text-slate-100 placeholder:text-slate-600" />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <label className="text-[10px] text-slate-400 font-bold uppercase">Link do Perfil Steam (Para capturar foto)</label>
+                  <label className="text-[10px] text-slate-400 font-bold uppercase">Link do Perfil Steam (Auto-Captura)</label>
                   <input type="text" value={newPlayerSteamUrl} onChange={(e) => setNewPlayerSteamUrl(e.target.value)} placeholder="Ex: https://steamcommunity.com/id/fallen" className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 outline-none text-xs text-slate-300 focus:border-blue-500 placeholder:text-slate-600" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase">Link Direto da Foto (Opcional)</label>
+                  <div className="flex gap-2">
+                    <input type="text" value={newPlayerAvatarUrl} onChange={(e) => setNewPlayerAvatarUrl(e.target.value)} placeholder="Preenchido automaticamente ao colar a Steam..." className="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 outline-none text-xs text-slate-300 focus:border-blue-500 placeholder:text-slate-600" />
+                    {newPlayerAvatarUrl && (
+                      <div className="h-9 w-9 rounded-full overflow-hidden border border-slate-600 flex-shrink-0 bg-slate-800">
+                        <img src={newPlayerAvatarUrl} alt="Preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <div className="flex gap-2 mt-2">
                  {editingPlayerId ? (
