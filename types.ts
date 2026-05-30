@@ -2,6 +2,8 @@
 export interface Player {
   id: string;
   nick: string;
+  steamUrl?: string;
+  avatarUrl?: string;
 }
 
 export interface Season {

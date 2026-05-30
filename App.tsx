@@ -135,10 +135,10 @@ const App: React.FC = () => {
   }, [currentRanking]);
 
  // Admin Actions Handlers
-  const handleAddPlayer = (nick: string) => setPlayers(prev => [...prev, { id: `p${Date.now()}`, nick }]);
+  const handleAddPlayer = (nick: string, steamUrl?: string, avatarUrl?: string) => setPlayers(prev => [...prev, { id: `p${Date.now()}`, nick, steamUrl, avatarUrl }]);
   
-  const handleEditPlayer = (id: string, newNick: string) => {
-    setPlayers(prev => prev.map(p => p.id === id ? { ...p, nick: newNick } : p));
+  const handleEditPlayer = (id: string, newNick: string, steamUrl?: string, avatarUrl?: string) => {
+    setPlayers(prev => prev.map(p => p.id === id ? { ...p, nick: newNick, steamUrl, avatarUrl } : p));
   };
   
   const handleDeletePlayer = (id: string) => {
@@ -235,14 +235,14 @@ const App: React.FC = () => {
   const handlePublishToCloud = async () => {
     setIsLoading(true);
     try {
-      // Usa o novo método sincronizado que evita erros de Foreign Key
+      // Usa o novo método sincronizado que usa UPSERT em vez de deletar
       await db.syncDatabase(players, seasons, stats, matches);
-      alert("✅ Dados sincronizados com sucesso!");
+      alert("✅ Dados sincronizados com sucesso na nuvem! (Sem sobrescrever ou apagar dados antigos)");
     } catch (e: any) {
       console.error(e);
       const errMsg = e.message || "Erro desconhecido";
       
-      let alertMsg = `❌ Falha ao publicar: ${errMsg}`;
+      let alertMsg = `❌ Falha ao publicar (Sincronização abortada):\nErro: ${errMsg}`;
       
       if (errMsg.includes("PGRST204") || errMsg.includes("column") || errMsg.includes("PGRST102") || errMsg.includes("does not exist")) {
         alertMsg = `❌ ERRO DE BANCO DE DADOS: Ocorreu um erro ao sincronizar com o Supabase.\n\nVocê precisa atualizar as tabelas do seu banco de dados adicionando as novas colunas, a tabela Matches e dar permissão de acesso!\n\nRode este SQL no SQL Editor do Supabase:\n\nALTER TABLE stats ADD COLUMN IF NOT EXISTS kills int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS deaths int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS assists int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS damage int DEFAULT 0;\nALTER TABLE stats ADD COLUMN IF NOT EXISTS "hsPercent" int DEFAULT 0;\n\nCREATE TABLE IF NOT EXISTS matches (\n  id text PRIMARY KEY,\n  "seasonId" text REFERENCES seasons(id) ON DELETE CASCADE,\n  map text,\n  "team1Name" text,\n  "team2Name" text,\n  "team1Score" int,\n  "team2Score" int,\n  "winningTeam" text,\n  date text,\n  players jsonb\n);\n\nGRANT ALL ON TABLE matches TO anon;\nGRANT ALL ON TABLE matches TO authenticated;`;

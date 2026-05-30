@@ -15,10 +15,37 @@ interface PlayerProfileProps {
 
 const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, seasons, stats, matches, initialSeasonId, onClose }) => {
   const [localSeasonId, setLocalSeasonId] = useState<string>(initialSeasonId || (seasons.length > 0 ? seasons[0].id : ''));
+  const [fetchedAvatar, setFetchedAvatar] = useState<string | null>(null);
   
   const player = players.find(p => p.id === playerId);
   
+  React.useEffect(() => {
+    setFetchedAvatar(null);
+    if (player && player.steamUrl) {
+      let targetUrl = player.steamUrl.trim();
+      if (!targetUrl.startsWith('http')) {
+        targetUrl = 'https://' + targetUrl;
+      }
+      
+      fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.contents) {
+            const html = data.contents;
+            const match = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
+                          html.match(/<link\s+rel="image_src"\s+href="([^"]+)"/i);
+            if (match && match[1]) {
+              setFetchedAvatar(match[1]);
+            }
+          }
+        })
+        .catch(err => console.error('Erro ao buscar foto da Steam:', err));
+    }
+  }, [player?.steamUrl, player?.id]);
+
   if (!player) return null;
+
+  const displayAvatar = fetchedAvatar || player.avatarUrl;
 
   const profileData = useMemo(() => {
     const seasonStats = stats.find(s => s.playerId === playerId && s.seasonId === localSeasonId);
@@ -160,13 +187,34 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-emerald-500 to-blue-500 text-transparent"></div>
         <div className="flex flex-col md:flex-row items-center md:items-start gap-8 z-10 relative">
           
-          <div className="h-24 w-24 rounded-full bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-4xl font-gaming font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]">
-            {player.nick.substring(0, 2).toUpperCase()}
-          </div>
+          {displayAvatar ? (
+            <div className="h-24 w-24 rounded-full shadow-[0_0_20px_rgba(168,85,247,0.4)] overflow-hidden border-2 border-purple-500/50 flex-shrink-0 bg-slate-800">
+              <img 
+                src={displayAvatar} 
+                alt={player.nick} 
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                  e.currentTarget.parentElement!.innerHTML = `<span class="flex items-center justify-center w-full h-full bg-gradient-to-br from-purple-600 to-blue-500 text-4xl font-gaming font-bold text-white">${player.nick.substring(0, 2).toUpperCase()}</span>`;
+                }}
+              />
+            </div>
+          ) : (
+            <div className="h-24 w-24 rounded-full flex-shrink-0 bg-gradient-to-br from-purple-600 to-blue-500 flex items-center justify-center text-4xl font-gaming font-bold text-white shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+              {player.nick.substring(0, 2).toUpperCase()}
+            </div>
+          )}
           
           <div className="flex-1 text-center md:text-left">
-            <h2 className="text-3xl md:text-4xl font-gaming font-bold text-white mb-2">
+            <h2 className="text-3xl md:text-4xl font-gaming font-bold text-white mb-2 flex flex-col md:flex-row items-center md:items-baseline gap-2 justify-center md:justify-start">
               {player.nick}
+              {player.steamUrl && (
+                <a href={player.steamUrl} target="_blank" rel="noopener noreferrer" className="text-slate-400 hover:text-white transition-colors" title="Perfil Steam">
+                  <svg className="w-5 h-5 mb-1" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M11.979 0C5.362 0 0 5.363 0 11.979c0 4.195 2.148 7.893 5.393 10.127l3.666-5.32c-.08-.415-.125-.845-.125-1.286 0-3.376 2.736-6.113 6.113-6.113 3.377 0 6.112 2.737 6.112 6.113 0 3.377-2.735 6.113-6.112 6.113-.912 0-1.782-.2-2.583-.556l-3.328 4.87c.928.16 1.884.248 2.863.248 6.617 0 11.979-5.364 11.979-11.979C23.978 5.363 18.614 0 11.979 0zm5.184 9.475c-1.385 0-2.507 1.12-2.507 2.506 0 1.384 1.122 2.507 2.507 2.507 1.384 0 2.505-1.123 2.505-2.507 0-1.386-1.121-2.506-2.505-2.506zm-6.248 3.868l-3.344 4.868a8.318 8.318 0 01-1.026.06c-1.611 0-3.111-.475-4.385-1.288l2.973-4.32a6.075 6.075 0 005.782.68z" />
+                  </svg>
+                </a>
+              )}
             </h2>
             <div className="inline-block mt-1 mb-2 group/tooltip relative">
               <img 

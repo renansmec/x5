@@ -8,8 +8,8 @@ interface AdminPanelProps {
   players: Player[];
   seasons: Season[];
   stats: PlayerStats[];
-  onAddPlayer: (nick: string) => void;
-  onEditPlayer: (id: string, newNick: string) => void;
+  onAddPlayer: (nick: string, steamUrl?: string, avatarUrl?: string) => void;
+  onEditPlayer: (id: string, newNick: string, steamUrl?: string, avatarUrl?: string) => void;
   onDeletePlayer: (id: string) => void;
   onAddSeason: (name: string) => void;
   onEditSeason: (id: string, newName: string) => void;
@@ -34,6 +34,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   globalSelectedSeasonId, setGlobalSelectedSeasonId
 }) => {
   const [newPlayerNick, setNewPlayerNick] = useState('');
+  const [newPlayerSteamUrl, setNewPlayerSteamUrl] = useState('');
+  const [newPlayerAvatarUrl, setNewPlayerAvatarUrl] = useState('');
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null); // ID do jogador sendo editado
 
   const [newSeasonName, setNewSeasonName] = useState('');
@@ -120,17 +122,71 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setTimeout(() => setSaveSuccess(false), 3500);
   };
 
-  const handleSavePlayerEdit = () => {
+  const [isPlayerSaving, setIsPlayerSaving] = useState(false);
+
+  const fetchSteamAvatar = async (steamUrl: string) => {
+    if (!steamUrl) return null;
+    try {
+      let targetUrl = steamUrl.trim();
+      if (!targetUrl.startsWith('http')) {
+        targetUrl = 'https://' + targetUrl;
+      }
+      
+      const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`);
+      const data = await res.json();
+      if (data && data.contents) {
+        const html = data.contents;
+        const match = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/i) ||
+                      html.match(/<link\s+rel="image_src"\s+href="([^"]+)"/i);
+        if (match && match[1]) {
+          return match[1];
+        }
+      }
+    } catch (e) {
+      console.error("Erro ao buscar avatar", e);
+    }
+    return null;
+  }
+
+  const handleAddPlayerSubmit = async () => {
+    if (newPlayerNick.trim()) {
+      setIsPlayerSaving(true);
+      let finalAvatarUrl = newPlayerAvatarUrl;
+      if (newPlayerSteamUrl && !newPlayerAvatarUrl) {
+        const fetched = await fetchSteamAvatar(newPlayerSteamUrl);
+        if (fetched) finalAvatarUrl = fetched;
+      }
+      onAddPlayer(newPlayerNick, newPlayerSteamUrl, finalAvatarUrl);
+      setNewPlayerNick('');
+      setNewPlayerSteamUrl('');
+      setNewPlayerAvatarUrl('');
+      setIsPlayerSaving(false);
+    }
+  };
+
+  const handleSavePlayerEdit = async () => {
     if (editingPlayerId && newPlayerNick.trim()) {
-      onEditPlayer(editingPlayerId, newPlayerNick);
+      setIsPlayerSaving(true);
+      let finalAvatarUrl = newPlayerAvatarUrl;
+      // Fetch only if steam URL is provided and avatar is missing, or maybe force fetch if avatar is empty?
+      if (newPlayerSteamUrl && !newPlayerAvatarUrl) {
+         const fetched = await fetchSteamAvatar(newPlayerSteamUrl);
+         if (fetched) finalAvatarUrl = fetched;
+      }
+      onEditPlayer(editingPlayerId, newPlayerNick, newPlayerSteamUrl, finalAvatarUrl);
       setEditingPlayerId(null);
       setNewPlayerNick('');
+      setNewPlayerSteamUrl('');
+      setNewPlayerAvatarUrl('');
+      setIsPlayerSaving(false);
     }
   };
 
   const startEditingPlayer = (player: Player) => {
     setEditingPlayerId(player.id);
     setNewPlayerNick(player.nick);
+    setNewPlayerSteamUrl(player.steamUrl || '');
+    setNewPlayerAvatarUrl(player.avatarUrl || '');
   };
 
   const saveManualConfig = () => {
@@ -342,8 +398,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
       {isConnected ? (
         <div className="bg-emerald-600/10 border border-emerald-500/20 p-6 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
            <div>
-             <h4 className="text-emerald-400 font-bold">Publicar dados</h4>
-             <p className="text-xs text-slate-400">Envia as alterações locais para o banco de dados oficial.</p>
+             <h4 className="text-emerald-400 font-bold">Publicar dados (Sincronização)</h4>
+             <p className="text-xs text-slate-400">Atualiza e insere novos dados na nuvem (sem apagar os antigos).</p>
            </div>
            <button onClick={onPublish} className="bg-emerald-600 hover:bg-emerald-500 px-8 py-3 rounded-xl font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 text-white">
              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
@@ -364,22 +420,34 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
               Gerenciar jogadores
             </h3>
-            <div className="flex gap-2 mb-6">
-              <input 
-                type="text" 
-                value={newPlayerNick} 
-                onChange={(e) => setNewPlayerNick(e.target.value)} 
-                placeholder={editingPlayerId ? "Novo nome..." : "Nick do player..."} 
-                className="flex-1 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 outline-none focus:ring-1 focus:ring-blue-500 transition-all text-slate-100" 
-              />
-              {editingPlayerId ? (
-                <div className="flex gap-2">
-                   <button onClick={handleSavePlayerEdit} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-3 rounded-xl font-bold transition-all text-white">Salvar</button>
-                   <button onClick={() => { setEditingPlayerId(null); setNewPlayerNick(''); }} className="bg-slate-700 hover:bg-slate-600 px-4 py-3 rounded-xl font-bold transition-all text-slate-300">X</button>
+            <div className="flex flex-col gap-2 mb-6">
+              <div className="flex flex-col gap-3 bg-slate-800/80 p-4 rounded-xl border border-slate-700 w-full animate-in fade-in zoom-in duration-200">
+                <div className="flex justify-between items-center mb-1">
+                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">{editingPlayerId ? '✏️ Editando Jogador' : '➕ Adicionar Novo Jogador'}</h4>
                 </div>
-              ) : (
-                <button onClick={() => { if(newPlayerNick) { onAddPlayer(newPlayerNick); setNewPlayerNick(''); } }} className="bg-blue-600 hover:bg-blue-500 px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 text-white">Add</button>
-              )}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase">Nick do Jogador (Obrigatório)</label>
+                  <input type="text" value={newPlayerNick} onChange={(e) => setNewPlayerNick(e.target.value)} placeholder="Nick..." className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 outline-none focus:border-blue-500 text-slate-100 placeholder:text-slate-600" />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label className="text-[10px] text-slate-400 font-bold uppercase">Link do Perfil Steam (Para capturar foto)</label>
+                  <input type="text" value={newPlayerSteamUrl} onChange={(e) => setNewPlayerSteamUrl(e.target.value)} placeholder="Ex: https://steamcommunity.com/id/fallen" className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 outline-none text-xs text-slate-300 focus:border-blue-500 placeholder:text-slate-600" />
+                </div>
+                <div className="flex gap-2 mt-2">
+                 {editingPlayerId ? (
+                   <>
+                     <button onClick={handleSavePlayerEdit} disabled={isPlayerSaving || !newPlayerNick.trim()} className="flex-1 bg-amber-600 hover:bg-amber-500 py-3 rounded-xl font-bold transition-all text-white disabled:opacity-50 flex justify-center items-center gap-2">
+                        {isPlayerSaving ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : 'Salvar'}
+                     </button>
+                     <button onClick={() => { setEditingPlayerId(null); setNewPlayerNick(''); setNewPlayerSteamUrl(''); setNewPlayerAvatarUrl(''); }} disabled={isPlayerSaving} className="bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-xl font-bold transition-all text-slate-300 disabled:opacity-50">Cancelar</button>
+                   </>
+                 ) : (
+                   <button onClick={handleAddPlayerSubmit} disabled={isPlayerSaving || !newPlayerNick.trim()} className="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/20 text-white disabled:opacity-50 flex justify-center items-center gap-2">
+                      {isPlayerSaving ? <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div> : 'Adicionar Jogador'}
+                   </button>
+                 )}
+                </div>
+              </div>
             </div>
             <div className="max-h-56 overflow-y-auto space-y-2 custom-scrollbar pr-2">
               {players.length === 0 && <p className="text-xs text-slate-600 text-center py-4">Nenhum jogador cadastrado.</p>}

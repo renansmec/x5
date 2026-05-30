@@ -79,7 +79,7 @@ async function supabaseFetch(table: string, method: 'GET' | 'POST' | 'DELETE' = 
     'apikey': anonKey,
     'Authorization': `Bearer ${anonKey}`,
     'Content-Type': 'application/json',
-    'Prefer': method === 'POST' ? 'return=representation' : '',
+    'Prefer': method === 'POST' ? 'return=representation, resolution=merge-duplicates' : '',
   };
 
   try {
@@ -127,7 +127,18 @@ export const db = {
   },
 
   async getPlayers(): Promise<Player[] | null> {
-    try { return await supabaseFetch('players', 'GET', null, '?select=*'); } catch { return null; }
+    try { 
+      const res = await supabaseFetch('players', 'GET', null, '?select=*');
+      if (res && Array.isArray(res)) {
+        return res.map((p: any) => ({
+          id: p.id,
+          nick: p.nick,
+          steamUrl: p.steamUrl || p.steamurl || null,
+          avatarUrl: p.avatarUrl || p.avatarurl || null
+        }));
+      }
+      return res;
+    } catch { return null; }
   },
 
   async getSeasons(): Promise<Season[] | null> {
@@ -215,29 +226,20 @@ export const db = {
     }
   },
 
-  // Método unificado para salvar tudo na ordem correta
+  // Método unificado para UPSERT (inserir ou atualizar) tudo na nuvem sem apagar nada
   async syncDatabase(players: Player[], seasons: Season[], stats: PlayerStats[], matches: MatchRecord[] = []): Promise<void> {
     if (!this.isCloudEnabled()) return;
 
     try {
-      console.log("Iniciando sincronização...");
+      console.log("Iniciando sincronização (apenas inserindo/atualizando novos dados)...");
       
-      // 1. Apagar filhos primeiro (Stats dependem de Players e Seasons)
-      await supabaseFetch('stats', 'DELETE');
-      await supabaseFetch('matches', 'DELETE').catch(() => console.log('Tabela matches pode não existir ainda'));
-      
-      // 2. Apagar pais
-      // Usamos Promise.all aqui pois players e seasons não dependem entre si
-      await Promise.all([
-        supabaseFetch('players', 'DELETE'),
-        supabaseFetch('seasons', 'DELETE')
-      ]);
-
-      // 3. Criar pais
+      // 1. Inserir ou atualizar pais
       // Normalizando chaves para evitar PGRST102 (PostgREST exige que todos os objetos do array tenham mesmas chaves)
       const normalizedPlayers = players.map(p => ({
         id: p.id || '',
-        nick: p.nick || ''
+        nick: p.nick || '',
+        steamUrl: p.steamUrl || null,
+        avatarUrl: p.avatarUrl || null
       }));
       
       const normalizedSeasons = seasons.map(s => ({
