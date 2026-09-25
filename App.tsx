@@ -11,7 +11,7 @@ import { getRankingInsights } from './services/geminiService';
 import { calculatePlayerRating, getRankFromScore, getPlayerMatchRecord } from './utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
-const ADMIN_PASSWORD = "x5admin2024";
+const ADMIN_PASSWORD = "buceta123";
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewType>('ranking');

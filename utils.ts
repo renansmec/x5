@@ -241,3 +241,117 @@ export function getPlayerMatchRecord(
   return { wins, losses, total, winRate: Math.round(winRate) };
 }
 
+/**
+ * Calcula a pontuação individual de uma partida (Match Rating X5)
+ * Utiliza a mesma distribuição de pesos da regra equilibrada de patentes:
+ * 1. KDA Efetivo (Kills + 0.35 * Assists / Mortes) - Peso 35%
+ * 2. Dano Causado (Normalizado para ~1800 de dano por partida) - Peso 25%
+ * 3. Vitória da Partida (Bônus de time vencedor) - Peso 25% (1.60 vitória / 0.65 derrota)
+ * 4. % Headshot (Precisão mecânica) - Peso 15% (0.65 + hs% * 1.0)
+ */
+export function calculateMatchPlayerRating(params: {
+  kills: number;
+  deaths: number;
+  assists?: number;
+  damage?: number;
+  hsPercent?: number;
+  won: boolean;
+}): { score: number; kda: number } {
+  const { kills, deaths, assists = 0, damage = 0, hsPercent = 0, won } = params;
+
+  // 1. KDA Efetivo
+  const kda = deaths === 0 ? kills + assists * 0.35 : (kills + assists * 0.35) / Math.max(1, deaths);
+  const kdaScore = Math.max(0.2, Math.min(2.6, kda));
+
+  // 2. Dano (Normalizado com base de 1800 de dano por partida de 24 rounds)
+  const damageScore = Math.max(0.3, Math.min(2.3, damage / 1800));
+
+  // 3. Resultado da Partida (Vitória tem bônus de 25% de peso)
+  const winRateScore = won ? 1.60 : 0.65;
+
+  // 4. Precisão (% Headshot)
+  const hsVal = Math.max(0, Math.min(100, hsPercent));
+  const hsScore = Math.max(0.5, Math.min(1.6, 0.65 + (hsVal / 100) * 1.0));
+
+  // Média ponderada dos fatores (Soma dos pesos = 1.00)
+  const score = Number(((0.35 * kdaScore) + (0.25 * damageScore) + (0.25 * winRateScore) + (0.15 * hsScore)).toFixed(2));
+
+  return {
+    score,
+    kda: Number(kda.toFixed(2))
+  };
+}
+
+/**
+ * Retorna o MVP de uma partida (jogador com maior Match Rating X5 do time vencedor)
+ */
+export function getMatchMVP(match: {
+  team1Name?: string;
+  team2Name?: string;
+  winningTeam: string;
+  players: Array<{
+    playerId?: string;
+    nick: string;
+    team?: 'team1' | 'team2';
+    kills: number;
+    deaths: number;
+    assists?: number;
+    damage?: number;
+    hsPercent?: number;
+  }>;
+}) {
+  const t1Name = (match.team1Name || 'TIME 1').trim().toUpperCase();
+  const t2Name = (match.team2Name || 'TIME 2').trim().toUpperCase();
+  const winTeam = (match.winningTeam || '').trim().toUpperCase();
+
+  const isT1Winner = winTeam === t1Name || winTeam === 'TIME 1';
+  const isT2Winner = winTeam === t2Name || winTeam === 'TIME 2';
+
+  let topMvp: {
+    nick: string;
+    playerId?: string;
+    score: number;
+    kills: number;
+    deaths: number;
+    assists: number;
+    damage: number;
+    hsPercent: number;
+    team: 'team1' | 'team2';
+    kd: number;
+  } | null = null;
+
+  match.players.forEach(p => {
+    const isPlayerWinningTeam = (p.team === 'team1' && isT1Winner) || (p.team === 'team2' && isT2Winner) || (!p.team && isT1Winner);
+    const { score } = calculateMatchPlayerRating({
+      kills: p.kills,
+      deaths: p.deaths,
+      assists: p.assists,
+      damage: p.damage,
+      hsPercent: p.hsPercent,
+      won: isPlayerWinningTeam
+    });
+
+    const kd = p.deaths === 0 ? p.kills : Number((p.kills / p.deaths).toFixed(2));
+
+    // O MVP oficial da partida é o maior Rating do time vencedor
+    if (isPlayerWinningTeam) {
+      if (!topMvp || score > topMvp.score) {
+        topMvp = {
+          nick: p.nick,
+          playerId: p.playerId,
+          score,
+          kills: p.kills,
+          deaths: p.deaths,
+          assists: p.assists || 0,
+          damage: p.damage || 0,
+          hsPercent: p.hsPercent || 0,
+          team: p.team || 'team1',
+          kd
+        };
+      }
+    }
+  });
+
+  return topMvp;
+}
+
