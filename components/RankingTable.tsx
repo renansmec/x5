@@ -160,15 +160,15 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick, season
               <th className="px-4 py-4 text-slate-500 w-12 text-center">#</th>
               <th className="px-3 py-4 text-slate-500 text-center w-16">Tend.</th>
               {renderHeader("Nick", "nick", "text-slate-200")}
-              {renderHeader("Patente", "score", "text-amber-400", "text-left", "Patente definida pelo Rating X5 equilibrado")}
-              {renderHeader("Rating X5", "score", "text-purple-300", "text-left", "Pontuação equilibrada de desempenho")}
+              {renderHeader("Patente", "score", "text-amber-400", "text-center", "Patente definida pelo Rating X5 equilibrado")}
+              {renderHeader("Rating", "score", "text-purple-300", "text-left", "Pontuação equilibrada de desempenho")}
               {renderHeader("Part.", "matches", "text-slate-400", "text-center")}
               {renderHeader("V / D (% Win)", "winRate", "text-emerald-400", "text-left", "Vitórias, Derrotas e Taxa de Vitória")}
               {renderHeader("K/D", "kd", "text-yellow-400", "text-left", "Vítimas / Mortes")}
-              {renderHeader("Vítimas", "kills", "text-emerald-400")}
-              {renderHeader("Mortes", "deaths", "text-rose-400")}
+              {renderHeader("Kills", "kills", "text-emerald-400")}
+              {renderHeader("Deaths", "deaths", "text-rose-400")}
               {renderHeader("Assists", "assists", "text-sky-400")}
-              {renderHeader("Dano M.", "damagePerMatch", "text-orange-400", "text-left", "Dano médio por partida")}
+              {renderHeader("D.M.", "damagePerMatch", "text-orange-400", "text-left", "Dano médio por partida")}
               {renderHeader("%HS", "hsPercent", "text-purple-400")}
             </tr>
           </thead>
@@ -245,18 +245,18 @@ const RankingTable: React.FC<RankingTableProps> = ({ data, onPlayerClick, season
                         <span className="truncate max-w-[130px] sm:max-w-none">{player.nick}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-3.5">
-                      <span className="flex items-center gap-2 group/tooltip relative">
+                    <td className="px-4 py-3.5 text-center">
+                      <div className="flex items-center justify-center group/tooltip relative">
                         <img 
                           src={`/patentes/${patentInfo.image}`} 
                           alt={patentInfo.name} 
-                          className="h-7 object-contain drop-shadow"
+                          title={patentInfo.name}
+                          className="h-8 max-w-[56px] object-contain drop-shadow transition-transform group-hover:scale-110"
                         />
-                        <span className="hidden sm:inline font-sans text-xs text-slate-300 font-semibold">{patentInfo.name}</span>
-                        <span className="absolute left-10 -top-6 scale-0 transition-transform bg-slate-900 border border-slate-700 text-xs text-white px-2 py-1 rounded group-hover/tooltip:scale-100 z-20 whitespace-nowrap shadow-xl">
+                        <span className="absolute left-1/2 -translate-x-1/2 -top-8 scale-0 transition-transform bg-slate-900 border border-slate-700 text-xs text-white px-2.5 py-1 rounded-lg group-hover/tooltip:scale-100 z-30 whitespace-nowrap shadow-xl pointer-events-none">
                           {patentInfo.name} &bull; Rating {scoreValue.toFixed(2)}
                         </span>
-                      </span>
+                      </div>
                     </td>
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-1.5">
