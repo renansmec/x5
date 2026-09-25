@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { Player, MatchRecord, PlayerStats, Season } from '../types';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { calculatePlayerRating, getRankProgress } from '../utils';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { calculatePlayerRating, calculateMatchPlayerRating, getRankProgress } from '../utils';
 
 interface PlayerProfileProps {
   playerId: string | null;
@@ -16,6 +16,10 @@ interface PlayerProfileProps {
 const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, seasons, stats, matches, initialSeasonId, onClose }) => {
   const [localSeasonId, setLocalSeasonId] = useState<string>(initialSeasonId || (seasons.length > 0 ? seasons[0].id : ''));
   const [fetchedAvatar, setFetchedAvatar] = useState<string | null>(null);
+  
+  // Controles do Gráfico de Evolução
+  const [chartMetric, setChartMetric] = useState<'both' | 'rating' | 'kd'>('both');
+  const [chartScope, setChartScope] = useState<'cumulative' | 'match'>('cumulative');
   
   const player = players.find(p => p.id === playerId);
   
@@ -118,17 +122,45 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
         mapStatsMap[mapName].wins++;
       }
 
+      // Calcula o Rating cumulativo até esta partida
+      const cumulativeMatches = idx + 1;
+      const cumulativeWinRate = (wins + losses) > 0 ? (wins / (wins + losses)) * 100 : 50;
+      const cumulativeAvgHS = hsMatchesCount > 0 ? Math.round(totalHS / hsMatchesCount) : 0;
+      const cumRatingOutput = calculatePlayerRating({
+        kills: totalKills,
+        deaths: totalDeaths,
+        assists: totalAssists,
+        damage: totalDamage,
+        matches: cumulativeMatches,
+        hsPercent: cumulativeAvgHS,
+        wins,
+        losses,
+        winRate: cumulativeWinRate
+      });
+
+      // Calcula o Rating específico apenas desta partida
+      const singleMatchRating = calculateMatchPlayerRating({
+        kills: pRecord.kills,
+        deaths: pRecord.deaths,
+        assists: pRecord.assists,
+        damage: pRecord.damage,
+        hsPercent: pRecord.hsPercent,
+        won
+      });
+
       historyData.push({
         matchId: m.id,
         date: dateStr,
         map: m.map,
         kd: cumulativeKD,
         matchKD: matchKD,
+        rating: cumRatingOutput.score,
+        matchRating: singleMatchRating.score,
         kills: pRecord.kills,
         deaths: pRecord.deaths,
         assists: pRecord.assists || 0,
         damage: pRecord.damage || 0,
-        hsPercent: pRecord.hsPercent,
+        hsPercent: pRecord.hsPercent || 0,
         result: won ? 'Vitória' : 'Derrota',
         index: `Match ${idx + 1}`
       });
@@ -188,6 +220,10 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
   }, [matches, player, localSeasonId, stats, playerId]);
 
   const { rankProg, ratingOutput } = profileData;
+
+  // Chaves dinâmicas baseadas no escopo escolhido (acumulado ou por partida)
+  const ratingDataKey = chartScope === 'cumulative' ? 'rating' : 'matchRating';
+  const kdDataKey = chartScope === 'cumulative' ? 'kd' : 'matchKD';
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-8 duration-500 pb-12">
@@ -403,15 +439,75 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
       </div>
 
       <div className="grid grid-cols-1 gap-8 mt-8">
-        {/* Gráfico de Evolução */}
+        {/* Gráfico de Evolução (com Rating X5 e K/D) */}
         <div className="bg-slate-900/50 p-6 rounded-2xl border border-slate-800">
-          <h3 className="text-xl font-gaming font-bold text-slate-200 mb-6 flex items-center gap-2">
-            <span className="w-1.5 h-6 bg-purple-500 rounded-full"></span>
-            Evolução de K/D por Partida
-          </h3>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <h3 className="text-xl font-gaming font-bold text-slate-200 flex items-center gap-2">
+              <span className="w-1.5 h-6 bg-purple-500 rounded-full"></span>
+              Evolução de Desempenho por Partida
+            </h3>
+
+            {/* Controles do Gráfico */}
+            <div className="flex flex-wrap items-center gap-2.5 text-xs">
+              {/* Seletor Acumulado vs Por Partida */}
+              <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setChartScope('cumulative')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                    chartScope === 'cumulative' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Evolução acumulada ao longo da temporada"
+                >
+                  Geral Acumulado
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartScope('match')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                    chartScope === 'match' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                  title="Desempenho isolado de cada partida"
+                >
+                  Por Partida
+                </button>
+              </div>
+
+              {/* Seletor Métrica: Ambos, Rating X5, K/D */}
+              <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setChartMetric('both')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 ${
+                    chartMetric === 'both' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span>Comparar Ambos</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMetric('rating')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${
+                    chartMetric === 'rating' ? 'bg-purple-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span className="text-purple-300">⭐</span> Rating X5
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMetric('kd')}
+                  className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 ${
+                    chartMetric === 'kd' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <span className="text-yellow-400">🎯</span> K/D
+                </button>
+              </div>
+            </div>
+          </div>
           
           {profileData.historyData.length > 0 ? (
-            <div className="h-[320px] w-full">
+            <div className="h-[340px] w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={profileData.historyData} margin={{ top: 20, right: 30, left: -10, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
@@ -434,7 +530,18 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
                     itemStyle={{ color: '#d6d6d6' }}
                     labelStyle={{ color: '#94a3b8', marginBottom: '8px', fontWeight: 'bold' }}
                     formatter={(value: any, name: any) => {
-                      if (name === 'kd') return [<span style={{ color: '#a855f7', fontWeight: 'bold' }}>{value}</span>, 'K/D Acumulado'];
+                      if (name === 'Rating X5' || name === 'rating' || name === 'matchRating') {
+                        return [
+                          <span style={{ color: '#a855f7', fontWeight: 'bold' }}>⭐ {value}</span>, 
+                          chartScope === 'cumulative' ? 'Rating X5 Geral' : 'Rating da Partida'
+                        ];
+                      }
+                      if (name === 'K/D' || name === 'kd' || name === 'matchKD') {
+                        return [
+                          <span style={{ color: '#eab308', fontWeight: 'bold' }}>🎯 {value}</span>, 
+                          chartScope === 'cumulative' ? 'K/D Geral' : 'K/D da Partida'
+                        ];
+                      }
                       return [value, name];
                     }}
                     labelFormatter={(label, payload) => {
@@ -442,7 +549,9 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
                         const d = payload[0].payload;
                         return (
                           <div>
-                            <div style={{ marginBottom: '4px' }}>{d.date} - {d.map} ({d.result})</div>
+                            <div style={{ marginBottom: '4px', fontWeight: 'bold', color: '#f8fafc' }}>
+                              {d.date} - {d.map} ({d.result})
+                            </div>
                             <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 'normal' }}>
                               Partida: {d.kills}K / {d.deaths}D / {d.assists}A | Dano: {d.damage} | HS: {d.hsPercent}%
                             </div>
@@ -452,15 +561,40 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
                       return label;
                     }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="kd" 
-                    stroke="#a855f7" 
-                    strokeWidth={3}
-                    dot={{ r: 4, strokeWidth: 2, fill: '#0f172a', stroke: '#a855f7' }}
-                    activeDot={{ r: 6, strokeWidth: 0, fill: '#a855f7' }}
-                    animationDuration={1000}
+                  <Legend 
+                    verticalAlign="top" 
+                    align="right"
+                    wrapperStyle={{ paddingBottom: '16px', fontSize: '12px' }}
                   />
+
+                  {/* Linha do Rating X5 */}
+                  {(chartMetric === 'both' || chartMetric === 'rating') && (
+                    <Line 
+                      type="monotone" 
+                      dataKey={ratingDataKey}
+                      name="Rating X5" 
+                      stroke="#a855f7" 
+                      strokeWidth={3}
+                      dot={{ r: 4, strokeWidth: 2, fill: '#0f172a', stroke: '#a855f7' }}
+                      activeDot={{ r: 6, strokeWidth: 0, fill: '#a855f7' }}
+                      animationDuration={1000}
+                    />
+                  )}
+
+                  {/* Linha do K/D */}
+                  {(chartMetric === 'both' || chartMetric === 'kd') && (
+                    <Line 
+                      type="monotone" 
+                      dataKey={kdDataKey}
+                      name="K/D" 
+                      stroke="#eab308" 
+                      strokeWidth={2.5}
+                      strokeDasharray={chartMetric === 'both' ? '4 4' : undefined}
+                      dot={{ r: 3, strokeWidth: 2, fill: '#0f172a', stroke: '#eab308' }}
+                      activeDot={{ r: 5, strokeWidth: 0, fill: '#eab308' }}
+                      animationDuration={1000}
+                    />
+                  )}
                 </LineChart>
               </ResponsiveContainer>
             </div>
