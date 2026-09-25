@@ -28,7 +28,13 @@ export interface FullRankingEntry extends PlayerStats {
   avatarUrl?: string;
   steamUrl?: string;
   kd: number;
+  kda: number;
   damagePerMatch: number;
+  wins: number;
+  losses: number;
+  winRate: number;
+  score: number;
+  patent: { name: string; index: number; image: string };
   trend?: number;
 }
 

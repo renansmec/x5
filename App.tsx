@@ -8,6 +8,7 @@ import MatchHistory from './components/MatchHistory';
 import PlayerProfile from './components/PlayerProfile';
 import { db } from './services/databaseService';
 import { getRankingInsights } from './services/geminiService';
+import { calculatePlayerRating, getRankFromScore, getPlayerMatchRecord } from './utils';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 const ADMIN_PASSWORD = "x5admin2024";
@@ -31,6 +32,7 @@ const App: React.FC = () => {
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [loginError, setLoginError] = useState(false);
 
+  const [chartMetric, setChartMetric] = useState<'score' | 'kd'>('score');
   const [cloudError, setCloudError] = useState<string>('');
 
   // Busca dados automaticamente ao carregar
@@ -116,20 +118,53 @@ const App: React.FC = () => {
       .map(s => {
         const player = players.find(p => p.id === s.playerId);
         const kdValue = s.deaths === 0 ? s.kills : s.kills / s.deaths;
+        const damagePerMatch = s.matches === 0 ? 0 : s.damage / s.matches;
+
+        // Calcula Vitórias, Derrotas e Taxa de Vitória reais das partidas cadastradas
+        const { wins, losses, winRate, total } = getPlayerMatchRecord(
+          s.playerId,
+          player?.nick || '',
+          selectedSeasonId,
+          matches
+        );
+
+        // Se houver partidas registradas, usa o winRate real; se só houver estatísticas brutas manuais, usa neutro 50%
+        const effectiveWinRate = total > 0 ? winRate : 50;
+
+        const { score } = calculatePlayerRating({
+          kills: s.kills,
+          deaths: s.deaths,
+          assists: s.assists,
+          damage: s.damage,
+          matches: s.matches,
+          hsPercent: s.hsPercent || 0,
+          wins,
+          losses,
+          winRate: effectiveWinRate
+        });
+
+        const patent = getRankFromScore(score);
+
         return {
           ...s,
           nick: player?.nick || 'Desconhecido',
           avatarUrl: player?.avatarUrl,
           steamUrl: player?.steamUrl,
-          kd: kdValue,
-          damagePerMatch: s.matches === 0 ? 0 : s.damage / s.matches,
-          hsPercent: s.hsPercent || 0
+          kd: Number(kdValue.toFixed(2)),
+          kda: Number(((s.kills + s.assists * 0.35) / Math.max(1, s.deaths)).toFixed(2)),
+          damagePerMatch: Math.round(damagePerMatch),
+          hsPercent: s.hsPercent || 0,
+          wins,
+          losses,
+          winRate: total > 0 ? winRate : 0,
+          score,
+          patent
         };
       })
-      .sort((a, b) => b.kd - a.kd);
+      .sort((a, b) => b.score - a.score); // Ordena por padrão pelo Rating X5 equilibrado
 
     return currentStats;
-  }, [stats, selectedSeasonId, players, seasons]);
+  }, [stats, selectedSeasonId, players, seasons, matches]);
 
   // Filtra dados para o gráfico
   const chartData = useMemo(() => {
@@ -340,21 +375,53 @@ const App: React.FC = () => {
              {currentRanking.length > 0 ? (
                <div className="space-y-10">
                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    <div className="lg:col-span-3 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 h-[350px]">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
-                          <XAxis dataKey="nick" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                          <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
-                          <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }} 
-                          itemStyle={{ color: '#d6d6d6' }}/>
-
-                          <Bar dataKey="kd" radius={[6, 6, 0, 0]} barSize={40}>
-
-                             {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.kd >= 2.5 ? '#10b981' : entry.kd >= 1.0 ? '#3b82f6' : '#f43f5e'} />)}
-                          </Bar>
-                        </BarChart>
-                      </ResponsiveContainer>
+                    <div className="lg:col-span-3 bg-slate-900/50 p-6 rounded-2xl border border-slate-800 flex flex-col justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-purple-500 animate-pulse"></span>
+                          <h3 className="font-gaming text-lg font-bold text-slate-200">
+                            {chartMetric === 'score' ? 'Rating X5 (Desempenho Equilibrado)' : 'K/D Ratio Tradicional'}
+                          </h3>
+                        </div>
+                        <div className="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700 text-xs">
+                          <button 
+                            onClick={() => setChartMetric('score')}
+                            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${chartMetric === 'score' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            ⭐ Rating X5
+                          </button>
+                          <button 
+                            onClick={() => setChartMetric('kd')}
+                            className={`px-3 py-1.5 rounded-lg font-bold transition-all ${chartMetric === 'kd' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-white'}`}
+                          >
+                            🎯 K/D
+                          </button>
+                        </div>
+                      </div>
+                      <div className="h-[280px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={chartData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
+                            <XAxis dataKey="nick" stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <YAxis stroke="#64748b" fontSize={12} tickLine={false} axisLine={false} />
+                            <Tooltip 
+                              contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '12px' }} 
+                              itemStyle={{ color: '#d6d6d6' }}
+                              formatter={(val: any) => [
+                                chartMetric === 'score' ? `${val} (Rating X5)` : `${val} (K/D)`,
+                                chartMetric === 'score' ? 'Pontuação' : 'K/D'
+                              ]}
+                            />
+                            <Bar dataKey={chartMetric} radius={[6, 6, 0, 0]} barSize={36}>
+                               {chartData.map((entry, index) => {
+                                 const val = chartMetric === 'score' ? entry.score : entry.kd;
+                                 const fill = val >= 1.70 ? '#10b981' : val >= 1.20 ? '#a855f7' : val >= 0.95 ? '#3b82f6' : '#f43f5e';
+                                 return <Cell key={`cell-${index}`} fill={fill} />;
+                               })}
+                            </Bar>
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
                    </div>
                    <div className="bg-slate-900 border border-slate-800 p-8 rounded-2xl flex flex-col justify-center items-center text-center shadow-xl">
                       <div className="mb-6">
@@ -399,7 +466,7 @@ const App: React.FC = () => {
             onClose={() => { setView('ranking'); setSelectedPlayerId(null); }}
           />
         ) : view === 'balancer' ? (
-          <TeamBalancer players={players} seasons={seasons} stats={stats} />
+          <TeamBalancer players={players} seasons={seasons} stats={stats} matches={matches} />
           
         ) : !isAdminAuthenticated ? (
           <div className="max-w-md mx-auto mt-20 p-10 bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl animate-in zoom-in-95">

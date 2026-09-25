@@ -5,8 +5,8 @@ import { Player, Season, PlayerStats } from '../types';
 // 🚨 ÁREA DE CONFIGURAÇÃO OBRIGATÓRIA PARA ACESSO PÚBLICO 🚨
 // Para que o ranking apareça para todos SEM pedir senha, cole suas chaves abaixo.
 // ==================================================================================
-const HARDCODED_SUPABASE_URL = "https://ysibsmcncfqpuhzjczdm.supabase.co"; 
-const HARDCODED_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlzaWJzbWNuY2ZxcHVoempjemRtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAyNzMyNzcsImV4cCI6MjEwNTg0OTI3N30.dJEkTY0qxvo428RcWN5Luhe4Y24V95roOxZ_T0NL0zw";
+const HARDCODED_SUPABASE_URL = ""; 
+const HARDCODED_SUPABASE_ANON_KEY = "";
 // ==================================================================================
 
 const getEnvVar = (key: string): string => {
