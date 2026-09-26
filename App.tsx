@@ -110,6 +110,13 @@ const App: React.FC = () => {
     }
   };
 
+  // Determina o nome da última temporada cadastrada para o rodapé
+  const latestSeasonName = useMemo(() => {
+    if (seasons.length === 0) return 'SEASON';
+    // O array de temporadas já vem ordenado por mais recente primeiro (ou com id mais recente)
+    return seasons[0]?.name || 'SEASON';
+  }, [seasons]);
+
   const currentRanking: FullRankingEntry[] = useMemo(() => {
     if (!selectedSeasonId) return [];
 
@@ -503,7 +510,7 @@ const App: React.FC = () => {
 
       <footer className="fixed bottom-0 left-0 w-full bg-slate-900/80 backdrop-blur-md border-t border-slate-800/50 py-3 text-center z-40">
         <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-          X5 dos Amigos &bull; SEASON 5
+          X5 dos Amigos &bull; {latestSeasonName}
         </p>
       </footer>
     </div>
