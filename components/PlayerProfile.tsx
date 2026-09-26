@@ -371,103 +371,36 @@ const PlayerProfile: React.FC<PlayerProfileProps> = ({ playerId, players, season
               )}
             </h2>
 
-            {/* Linha das Patentes: Patente Atual + Patente da Última Temporada (lado a lado) */}
-            <div className="flex flex-col xl:flex-row items-stretch gap-3.5 my-3 max-w-4xl">
-              
-              {/* CARD 1: Patente Atual e Progresso */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 flex-1">
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <img 
-                    src={`/patentes/${rankProg.currentRank.image}`} 
-                    alt={rankProg.currentRank.name} 
-                    className="h-12 object-contain filter drop-shadow-md"
-                  />
-                  <div className="text-left">
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Patente Atual</p>
-                    <p className="text-base font-gaming font-bold text-amber-300">{rankProg.currentRank.name}</p>
-                  </div>
-                </div>
-
-                <div className="flex-1 w-full text-left border-t sm:border-t-0 sm:border-l border-slate-800 pt-2 sm:pt-0 sm:pl-4">
-                  <div className="flex justify-between items-center text-xs mb-1">
-                    <span className="text-slate-400">Progresso para <strong className="text-white">{rankProg.nextRank.name}</strong></span>
-                    <span className="font-mono font-bold text-purple-400">{rankProg.progressPercent}%</span>
-                  </div>
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
-                    <div 
-                      className="bg-gradient-to-r from-purple-500 to-emerald-400 h-full rounded-full transition-all duration-700"
-                      style={{ width: `${rankProg.progressPercent}%` }}
-                    />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
-                    <span>Rating atual: {ratingOutput.score.toFixed(2)}</span>
-                    <span>Alvo: {rankProg.nextMinScore.toFixed(2)}</span>
-                  </div>
+            {/* Badge de Patente e Barra de Progresso */}
+            <div className="flex flex-col sm:flex-row items-center gap-4 my-3 bg-slate-950/60 p-3.5 rounded-2xl border border-slate-800 max-w-xl">
+              <div className="flex items-center gap-3 flex-shrink-0">
+                <img 
+                  src={`/patentes/${rankProg.currentRank.image}`} 
+                  alt={rankProg.currentRank.name} 
+                  className="h-12 object-contain filter drop-shadow-md"
+                />
+                <div className="text-left">
+                  <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Patente Atual</p>
+                  <p className="text-base font-gaming font-bold text-amber-300">{rankProg.currentRank.name}</p>
                 </div>
               </div>
 
-              {/* CARD 2: Patente na Última Temporada (ao lado da patente atual) */}
-              {prevSeasonData ? (
-                <div className="bg-slate-950/70 p-3.5 rounded-2xl border border-slate-800/90 flex items-center gap-3.5 sm:min-w-[260px] shadow-inner">
-                  {prevSeasonData.played && prevSeasonData.patent ? (
-                    <>
-                      <img 
-                        src={`/patentes/${prevSeasonData.patent.image}`} 
-                        alt={prevSeasonData.patent.name} 
-                        className="h-12 object-contain filter drop-shadow-md flex-shrink-0"
-                      />
-                      <div className="text-left flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider truncate max-w-[130px]" title={prevSeasonData.season.name}>
-                            {prevSeasonData.season.name} (Anterior)
-                          </p>
-                          {ratingOutput.score > prevSeasonData.score ? (
-                            <span className="text-[10px] font-bold text-emerald-400 font-mono flex items-center" title="Evolução de Rating em relação à temporada anterior">
-                              ▲ +{(ratingOutput.score - prevSeasonData.score).toFixed(2)}
-                            </span>
-                          ) : ratingOutput.score < prevSeasonData.score ? (
-                            <span className="text-[10px] font-bold text-rose-400 font-mono flex items-center" title="Queda de Rating em relação à temporada anterior">
-                              ▼ -{(prevSeasonData.score - ratingOutput.score).toFixed(2)}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-slate-400 font-mono" title="Mesma pontuação">
-                              = 0.00
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm font-gaming font-bold text-amber-300/90 leading-tight">
-                          {prevSeasonData.patent.name}
-                        </p>
-                        <div className="flex items-center gap-2 mt-1 text-[11px] font-mono">
-                          <span className="text-purple-300 font-bold">⭐ {prevSeasonData.score.toFixed(2)}</span>
-                          <span className="text-slate-400">KD {prevSeasonData.kd.toFixed(2)}</span>
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="flex items-center gap-3 text-left w-full">
-                      <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-lg flex-shrink-0">
-                        ⏳
-                      </div>
-                      <div>
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                          {prevSeasonData.season.name} (Anterior)
-                        </p>
-                        <p className="text-xs text-slate-500 font-medium">Não disputou esta temporada</p>
-                      </div>
-                    </div>
-                  )}
+              <div className="flex-1 w-full text-left border-t sm:border-t-0 sm:border-l border-slate-800 pt-2 sm:pt-0 sm:pl-4">
+                <div className="flex justify-between items-center text-xs mb-1">
+                  <span className="text-slate-400">Progresso para <strong className="text-white">{rankProg.nextRank.name}</strong></span>
+                  <span className="font-mono font-bold text-purple-400">{rankProg.progressPercent}%</span>
                 </div>
-              ) : (
-                <div className="bg-slate-950/40 p-3.5 rounded-2xl border border-slate-800/60 flex items-center gap-3 sm:min-w-[220px]">
-                  <span className="text-xl">🌟</span>
-                  <div className="text-left">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Temporada Inaugural</p>
-                    <p className="text-xs text-slate-500">Primeira temporada do jogador</p>
-                  </div>
+                <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden border border-slate-700">
+                  <div 
+                    className="bg-gradient-to-r from-purple-500 to-emerald-400 h-full rounded-full transition-all duration-700"
+                    style={{ width: `${rankProg.progressPercent}%` }}
+                  />
                 </div>
-              )}
-
+                <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+                  <span>Rating atual: {ratingOutput.score.toFixed(2)}</span>
+                  <span>Alvo: {rankProg.nextMinScore.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
 
             {/* Cards de Métricas Principais */}
