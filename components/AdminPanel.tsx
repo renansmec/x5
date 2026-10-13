@@ -376,9 +376,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const p = players.find(pl => pl.id === playerId);
     if (!p) return;
 
+    // Se o jogador já estava na lista, marca-o como desertor com punição (em vez de duplicar se for o mesmo time)
+    const existingIndex = extractedData.players.findIndex(
+      pl => pl.nick.toLowerCase() === p.nick.toLowerCase()
+    );
+
     // Rounds jogados estimados baseados no placar ou padrão de 16
     const totalRounds = (extractedData.team1Score || 0) + (extractedData.team2Score || 0);
     const estimatedDeaths = totalRounds > 0 ? totalRounds : 16;
+
+    if (existingIndex > -1) {
+      const updatedPlayers = [...extractedData.players];
+      updatedPlayers[existingIndex] = {
+        ...updatedPlayers[existingIndex],
+        team,
+        kills: 0,
+        deaths: estimatedDeaths,
+        assists: 0,
+        damage: 0,
+        hsPercent: 0,
+        isAbandoned: true,
+        forcedLoss: true,
+        isComplete: false
+      };
+      setExtractedData({
+        ...extractedData,
+        players: updatedPlayers
+      });
+      return;
+    }
 
     const newQuitterPlayer = {
       nick: p.nick,
@@ -395,6 +421,52 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     setExtractedData({
       ...extractedData,
       players: [...extractedData.players, newQuitterPlayer]
+    });
+  };
+
+  // Alterna o status de um jogador já listado para Desertor ou Normal
+  const handleTogglePlayerQuitter = (index: number) => {
+    if (!extractedData) return;
+    const totalRounds = (extractedData.team1Score || 0) + (extractedData.team2Score || 0);
+    const estimatedDeaths = totalRounds > 0 ? totalRounds : 16;
+    const updatedPlayers = [...extractedData.players];
+    const target = updatedPlayers[index];
+    const isNowAbandoned = !target.isAbandoned;
+
+    updatedPlayers[index] = {
+      ...target,
+      isAbandoned: isNowAbandoned,
+      forcedLoss: isNowAbandoned,
+      isComplete: false,
+      kills: isNowAbandoned ? 0 : target.kills,
+      deaths: isNowAbandoned ? estimatedDeaths : target.deaths,
+      damage: isNowAbandoned ? 0 : target.damage,
+      assists: isNowAbandoned ? 0 : target.assists
+    };
+
+    setExtractedData({
+      ...extractedData,
+      players: updatedPlayers
+    });
+  };
+
+  // Alterna o status de um jogador já listado para Complete
+  const handleTogglePlayerComplete = (index: number) => {
+    if (!extractedData) return;
+    const updatedPlayers = [...extractedData.players];
+    const target = updatedPlayers[index];
+    const isNowComplete = !target.isComplete;
+
+    updatedPlayers[index] = {
+      ...target,
+      isComplete: isNowComplete,
+      isAbandoned: false,
+      forcedLoss: false
+    };
+
+    setExtractedData({
+      ...extractedData,
+      players: updatedPlayers
     });
   };
 
@@ -873,14 +945,40 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                                   <option value="team1">{extractedData.team1Name || 'Time 1'}</option>
                                   <option value="team2">{extractedData.team2Name || 'Time 2'}</option>
                                 </select>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveExtractedPlayer(i)}
-                                  className="text-rose-400 hover:text-rose-300 text-xs px-2 py-1 rounded bg-rose-950/40 border border-rose-900/50"
-                                  title="Remover jogador desta lista"
-                                >
-                                  ✕
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTogglePlayerQuitter(i)}
+                                    className={`text-[10px] px-2 py-0.5 rounded font-bold transition-all border ${
+                                      p.isAbandoned 
+                                        ? 'bg-rose-600 text-white border-rose-500' 
+                                        : 'bg-rose-950/40 text-rose-300 border-rose-800/60 hover:bg-rose-900/50'
+                                    }`}
+                                    title="Alternar punição de desertor (0 kills e derrota forçada)"
+                                  >
+                                    {p.isAbandoned ? '⚠️ Quitou' : '+ Desertor'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTogglePlayerComplete(i)}
+                                    className={`text-[10px] px-2 py-0.5 rounded font-bold transition-all border ${
+                                      p.isComplete 
+                                        ? 'bg-sky-600 text-white border-sky-500' 
+                                        : 'bg-sky-950/40 text-sky-300 border-sky-800/60 hover:bg-sky-900/50'
+                                    }`}
+                                    title="Alternar medalha de Complete"
+                                  >
+                                    {p.isComplete ? '🛡️ Complete' : '+ Complete'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveExtractedPlayer(i)}
+                                    className="text-rose-400 hover:text-rose-300 text-xs px-2 py-0.5 rounded bg-rose-950/40 border border-rose-900/50"
+                                    title="Remover jogador desta partida"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
                               </div>
                             </div>
                             <div className="flex gap-2 text-xs font-mono bg-slate-900 p-2 rounded-lg border border-slate-700 overflow-x-auto">
