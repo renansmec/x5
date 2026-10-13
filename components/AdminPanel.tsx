@@ -64,6 +64,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const [showConfig, setShowConfig] = useState(false);
   const [isConnected, setIsConnected] = useState(db.isCloudEnabled());
 
+  // Estados para modal rápido de Desertor (Quit) e Complete
+  const [specialModalType, setSpecialModalType] = useState<'abandon' | 'complete' | 'manual' | null>(null);
+  const [specialPlayerId, setSpecialPlayerId] = useState('');
+  const [specialCustomNick, setSpecialCustomNick] = useState('');
+  const [specialTeam, setSpecialTeam] = useState<'team1' | 'team2'>('team2');
+  const [specialKills, setSpecialKills] = useState(0);
+  const [specialDeaths, setSpecialDeaths] = useState(13);
+  const [specialAssists, setSpecialAssists] = useState(0);
+  const [specialDamage, setSpecialDamage] = useState(0);
+  const [specialHsPercent, setSpecialHsPercent] = useState(0);
+
   useEffect(() => {
     setManualUrl(localStorage.getItem('supabase_url') || '');
     setManualKey(localStorage.getItem('supabase_anon_key') || '');
@@ -303,7 +314,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           deaths: p.deaths,
           assists: p.assists,
           damage: p.damage,
-          hsPercent: p.hsPercent
+          hsPercent: p.hsPercent,
+          abandons: p.isAbandon ? 1 : 0,
+          completes: p.isComplete ? 1 : 0
         };
 
         // Atualiza a lista local de stats para salvar na nuvem
@@ -316,7 +329,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
             deaths: updatedStats[idx].deaths + entry.deaths,
             assists: updatedStats[idx].assists + entry.assists,
             damage: updatedStats[idx].damage + entry.damage,
-            hsPercent: Math.round(((updatedStats[idx].hsPercent || 0) * updatedStats[idx].matches + (entry.hsPercent || 0)) / (updatedStats[idx].matches + entry.matches))
+            hsPercent: Math.round(((updatedStats[idx].hsPercent || 0) * updatedStats[idx].matches + (entry.hsPercent || 0)) / (updatedStats[idx].matches + entry.matches)),
+            abandons: (updatedStats[idx].abandons || 0) + (p.isAbandon ? 1 : 0),
+            completes: (updatedStats[idx].completes || 0) + (p.isComplete ? 1 : 0)
           };
         } else {
           updatedStats.push({ ...entry, id: `st${Date.now()}_${Math.random().toString(36).substr(2, 9)}` });
@@ -330,7 +345,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
           deaths: p.deaths,
           assists: p.assists,
           damage: p.damage,
-          hsPercent: p.hsPercent
+          hsPercent: p.hsPercent,
+          isAbandon: !!p.isAbandon,
+          isComplete: !!p.isComplete
         });
       }
     }
@@ -365,6 +382,101 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
     const newData = { ...extractedData };
     newData.players[index] = { ...newData.players[index], [field]: value };
     setExtractedData(newData);
+  };
+
+  const handleToggleAbandon = (index: number) => {
+    if (!extractedData) return;
+    const current = extractedData.players[index];
+    const isNowAbandon = !current.isAbandon;
+    const team = current.team || 'team1';
+    const enemyScore = team === 'team1' ? (extractedData.team2Score || 13) : (extractedData.team1Score || 13);
+    
+    const newPlayers = [...extractedData.players];
+    newPlayers[index] = {
+      ...current,
+      isAbandon: isNowAbandon,
+      isComplete: false,
+      kills: isNowAbandon ? 0 : current.kills,
+      deaths: isNowAbandon ? enemyScore : current.deaths,
+      damage: isNowAbandon ? 0 : current.damage,
+      assists: isNowAbandon ? 0 : current.assists,
+      hsPercent: isNowAbandon ? 0 : current.hsPercent,
+    };
+    setExtractedData({ ...extractedData, players: newPlayers });
+  };
+
+  const handleToggleComplete = (index: number) => {
+    if (!extractedData) return;
+    const current = extractedData.players[index];
+    const newPlayers = [...extractedData.players];
+    newPlayers[index] = {
+      ...current,
+      isComplete: !current.isComplete,
+      isAbandon: false
+    };
+    setExtractedData({ ...extractedData, players: newPlayers });
+  };
+
+  const handleRemoveExtractedPlayer = (index: number) => {
+    if (!extractedData) return;
+    const newPlayers = extractedData.players.filter((_, i) => i !== index);
+    setExtractedData({ ...extractedData, players: newPlayers });
+  };
+
+  const handleOpenSpecialModal = (type: 'abandon' | 'complete' | 'manual') => {
+    setSpecialModalType(type);
+    setSpecialPlayerId(players.length > 0 ? players[0].id : '');
+    setSpecialCustomNick('');
+    setSpecialTeam('team2');
+    
+    const enemyScore = extractedData?.team1Score || 13;
+    if (type === 'abandon') {
+      setSpecialKills(0);
+      setSpecialDeaths(enemyScore);
+      setSpecialAssists(0);
+      setSpecialDamage(0);
+      setSpecialHsPercent(0);
+    } else {
+      setSpecialKills(5);
+      setSpecialDeaths(enemyScore);
+      setSpecialAssists(1);
+      setSpecialDamage(600);
+      setSpecialHsPercent(20);
+    }
+  };
+
+  const handleConfirmSpecialPlayer = () => {
+    if (!extractedData) return;
+    
+    let nick = specialCustomNick.trim();
+    if (specialPlayerId) {
+      const p = players.find(pl => pl.id === specialPlayerId);
+      if (p) nick = p.nick;
+    }
+    
+    if (!nick) {
+      alert("Selecione um jogador ou informe um apelido.");
+      return;
+    }
+    
+    const newPlayerEntry = {
+      nick,
+      team: specialTeam,
+      kills: specialModalType === 'abandon' ? 0 : Number(specialKills) || 0,
+      deaths: Number(specialDeaths) || 0,
+      assists: specialModalType === 'abandon' ? 0 : Number(specialAssists) || 0,
+      damage: specialModalType === 'abandon' ? 0 : Number(specialDamage) || 0,
+      hsPercent: specialModalType === 'abandon' ? 0 : Number(specialHsPercent) || 0,
+      isAbandon: specialModalType === 'abandon',
+      isComplete: specialModalType === 'complete'
+    };
+    
+    setExtractedData({
+      ...extractedData,
+      players: [...extractedData.players, newPlayerEntry]
+    });
+    
+    setSpecialModalType(null);
   };
 
   return (
@@ -644,63 +756,328 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
                       </div>
                     </div>
                     
-                    <div className="space-y-2 mb-6">
+                    {/* Botões de Ação Rápida: Desertor e Complete */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 mb-4 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+                      <div>
+                        <span className="text-xs font-bold text-slate-300 block">Gerenciar Jogadores da Partida</span>
+                        <span className="text-[11px] text-slate-500">Adicione jogadores ausentes no print (desertores ou quem completou)</span>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSpecialModal('abandon')}
+                          className="bg-rose-950/70 hover:bg-rose-900 border border-rose-500/50 text-rose-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-lg shadow-rose-950/30"
+                        >
+                          <span>⚠️</span> Registrar Desertor (Quit)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSpecialModal('complete')}
+                          className="bg-amber-950/70 hover:bg-amber-900 border border-amber-500/50 text-amber-300 hover:text-white text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all shadow-lg shadow-amber-950/30"
+                        >
+                          <span>🌟</span> Registrar Complete
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSpecialModal('manual')}
+                          className="bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-300 text-xs font-bold px-3 py-2 rounded-xl flex items-center gap-1.5 transition-all"
+                        >
+                          <span>➕</span> Jogador Manual
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Modal / Painel de Adição de Jogador Especial */}
+                    {specialModalType && (
+                      <div className={`p-5 rounded-2xl mb-6 border animate-in fade-in slide-in-from-top-2 shadow-2xl ${
+                        specialModalType === 'abandon'
+                          ? 'bg-rose-950/40 border-rose-500/40'
+                          : specialModalType === 'complete'
+                          ? 'bg-amber-950/40 border-amber-500/40'
+                          : 'bg-slate-900 border-purple-500/40'
+                      }`}>
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h5 className={`font-bold text-sm flex items-center gap-2 ${
+                              specialModalType === 'abandon'
+                                ? 'text-rose-400 font-gaming'
+                                : specialModalType === 'complete'
+                                ? 'text-amber-400 font-gaming'
+                                : 'text-purple-400 font-gaming'
+                            }`}>
+                              {specialModalType === 'abandon' && '⚠️ APLICAR PUNIÇÃO DE DESERTOR (QUITTER)'}
+                              {specialModalType === 'complete' && '🌟 REGISTRAR JOGADOR COMPLETE (SALVADOR)'}
+                              {specialModalType === 'manual' && '➕ ADICIONAR JOGADOR MANUAL'}
+                            </h5>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              {specialModalType === 'abandon' && 'O jogador receberá +1 partida com 0 Kills, 0 Dano e mortes aplicadas, impactando negativamente seu K/D sem punir o resto do time.'}
+                              {specialModalType === 'complete' && 'Jogador que entrou no meio da partida. Ele receberá a medalha especial de Complete e contabilizará seus dados normalmente.'}
+                              {specialModalType === 'manual' && 'Adicione um jogador que não foi detectado no print.'}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setSpecialModalType(null)}
+                            className="text-slate-400 hover:text-white text-xs px-2 py-1 rounded bg-slate-800/80"
+                          >
+                            ✕ Fechar
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 uppercase font-bold">Selecione o Jogador</label>
+                            <select
+                              value={specialPlayerId}
+                              onChange={(e) => {
+                                setSpecialPlayerId(e.target.value);
+                                if (e.target.value) setSpecialCustomNick('');
+                              }}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-purple-500"
+                            >
+                              <option value="">-- Selecione um jogador existente --</option>
+                              {players.map(pl => (
+                                <option key={pl.id} value={pl.id}>{pl.nick}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 uppercase font-bold">Ou Digite o Nick</label>
+                            <input
+                              type="text"
+                              value={specialCustomNick}
+                              onChange={(e) => {
+                                setSpecialCustomNick(e.target.value);
+                                if (e.target.value) setSpecialPlayerId('');
+                              }}
+                              placeholder="Nick do jogador..."
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-purple-500"
+                            />
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-[10px] text-slate-400 uppercase font-bold">Time</label>
+                            <select
+                              value={specialTeam}
+                              onChange={(e) => {
+                                const newTeam = e.target.value as 'team1' | 'team2';
+                                setSpecialTeam(newTeam);
+                                if (specialModalType === 'abandon') {
+                                  // Inverte o cálculo: mortes = rounds do time adversário
+                                  const enemyScore = newTeam === 'team1' ? (extractedData.team2Score || 13) : (extractedData.team1Score || 13);
+                                  setSpecialDeaths(enemyScore);
+                                }
+                              }}
+                              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-200 outline-none focus:border-purple-500"
+                            >
+                              <option value="team1">{extractedData.team1Name || 'Time 1'}</option>
+                              <option value="team2">{extractedData.team2Name || 'Time 2'}</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        {/* Estatísticas aplicadas */}
+                        <div className="bg-slate-900/90 p-3 rounded-xl border border-slate-800 flex flex-wrap items-center justify-between gap-3 mb-4">
+                          <span className="text-[11px] font-bold text-slate-400">
+                            {specialModalType === 'abandon' ? 'Penalidade de Status Aplicada:' : 'Status da Partida:'}
+                          </span>
+                          <div className="flex gap-3 text-xs font-mono">
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 text-[10px]">K:</span>
+                              <input
+                                type="number"
+                                value={specialKills}
+                                onChange={(e) => setSpecialKills(Number(e.target.value) || 0)}
+                                disabled={specialModalType === 'abandon'}
+                                className="w-12 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-center text-emerald-400 font-bold disabled:opacity-60"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 text-[10px]">D:</span>
+                              <input
+                                type="number"
+                                value={specialDeaths}
+                                onChange={(e) => setSpecialDeaths(Number(e.target.value) || 0)}
+                                className="w-12 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-center text-rose-400 font-bold"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 text-[10px]">A:</span>
+                              <input
+                                type="number"
+                                value={specialAssists}
+                                onChange={(e) => setSpecialAssists(Number(e.target.value) || 0)}
+                                disabled={specialModalType === 'abandon'}
+                                className="w-12 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-center text-sky-400 font-bold disabled:opacity-60"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 text-[10px]">DMG:</span>
+                              <input
+                                type="number"
+                                value={specialDamage}
+                                onChange={(e) => setSpecialDamage(Number(e.target.value) || 0)}
+                                disabled={specialModalType === 'abandon'}
+                                className="w-16 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-center text-amber-400 font-bold disabled:opacity-60"
+                              />
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <span className="text-slate-500 text-[10px]">%HS:</span>
+                              <input
+                                type="number"
+                                value={specialHsPercent}
+                                onChange={(e) => setSpecialHsPercent(Number(e.target.value) || 0)}
+                                disabled={specialModalType === 'abandon'}
+                                className="w-12 bg-slate-950 border border-slate-800 rounded px-1.5 py-0.5 text-center text-purple-400 font-bold disabled:opacity-60"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSpecialModalType(null)}
+                            className="bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold px-4 py-2 rounded-xl"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleConfirmSpecialPlayer}
+                            className={`text-xs font-bold px-5 py-2 rounded-xl transition-all shadow-lg ${
+                              specialModalType === 'abandon'
+                                ? 'bg-rose-600 hover:bg-rose-500 text-white shadow-rose-600/30'
+                                : specialModalType === 'complete'
+                                ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-600/30'
+                                : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30'
+                            }`}
+                          >
+                            Inserir na Partida
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="space-y-2.5 mb-6">
                       {extractedData.players.map((p, i) => {
                         const matchedPlayer = players.find(existing => existing.nick.toLowerCase() === p.nick.toLowerCase());
                         return (
-                          <div key={i} className="flex flex-col md:flex-row md:justify-between md:items-center bg-slate-800 p-3 rounded-xl text-sm gap-3">
-                            <div className="flex flex-col gap-1">
-                              <span className="font-bold text-slate-200 flex items-center gap-2">
-                                {p.nick}
-                              </span>
-                              <select 
-                                className="bg-slate-900 border border-slate-700 rounded p-1 text-xs text-slate-300 outline-none focus:border-purple-500"
-                                defaultValue={matchedPlayer?.id || ""}
-                                onChange={(e) => {
-                                  // Atualiza o nick no extractedData para o nick do jogador selecionado
-                                  // Isso é um hack simples para o handleConfirmExtractedData encontrar o jogador
-                                  const selectedPlayer = players.find(pl => pl.id === e.target.value);
-                                  if (selectedPlayer) {
-                                    const newData = {...extractedData};
-                                    newData.players[i].nick = selectedPlayer.nick;
-                                    setExtractedData(newData);
-                                  }
-                                }}
-                              >
-                                <option value="">-- Vincular Jogador --</option>
-                                {players.map(pl => (
-                                  <option key={pl.id} value={pl.id}>{pl.nick}</option>
-                                ))}
-                              </select>
-                              <select 
-                                value={p.team || 'team1'} 
-                                onChange={(e) => handleEditExtractedStat(i, 'team', e.target.value)}
-                                className="bg-slate-900 border border-slate-700 rounded p-1 text-[10px] text-slate-400 outline-none focus:border-purple-500 mt-1"
-                              >
-                                <option value="team1">Time 1</option>
-                                <option value="team2">Time 2</option>
-                              </select>
+                          <div 
+                            key={i} 
+                            className={`flex flex-col md:flex-row md:justify-between md:items-center p-3.5 rounded-xl text-sm gap-3 border transition-all ${
+                              p.isAbandon
+                                ? 'bg-rose-950/20 border-rose-500/40 shadow-inner'
+                                : p.isComplete
+                                ? 'bg-amber-950/20 border-amber-500/40 shadow-inner'
+                                : 'bg-slate-800 border-slate-700/60'
+                            }`}
+                          >
+                            <div className="flex flex-col gap-1.5 min-w-[200px]">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-slate-200">
+                                  {p.nick}
+                                </span>
+                                {p.isAbandon && (
+                                  <span className="bg-rose-500/20 border border-rose-500/40 text-rose-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <span>⚠️</span> Desertor (Quit)
+                                  </span>
+                                )}
+                                {p.isComplete && (
+                                  <span className="bg-amber-500/20 border border-amber-500/40 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                                    <span>🌟</span> Complete
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <select 
+                                  className="bg-slate-900 border border-slate-700 rounded-lg p-1 text-xs text-slate-300 outline-none focus:border-purple-500 flex-1"
+                                  defaultValue={matchedPlayer?.id || ""}
+                                  onChange={(e) => {
+                                    const selectedPlayer = players.find(pl => pl.id === e.target.value);
+                                    if (selectedPlayer) {
+                                      const newData = {...extractedData};
+                                      newData.players[i].nick = selectedPlayer.nick;
+                                      setExtractedData(newData);
+                                    }
+                                  }}
+                                >
+                                  <option value="">-- Vincular Jogador --</option>
+                                  {players.map(pl => (
+                                    <option key={pl.id} value={pl.id}>{pl.nick}</option>
+                                  ))}
+                                </select>
+                                <select 
+                                  value={p.team || 'team1'} 
+                                  onChange={(e) => handleEditExtractedStat(i, 'team', e.target.value)}
+                                  className="bg-slate-900 border border-slate-700 rounded-lg p-1 text-[11px] text-slate-300 outline-none focus:border-purple-500"
+                                >
+                                  <option value="team1">Time 1</option>
+                                  <option value="team2">Time 2</option>
+                                </select>
+                              </div>
                             </div>
-                            <div className="flex gap-2 text-xs font-mono bg-slate-900 p-2 rounded-lg border border-slate-700 overflow-x-auto">
-                              <div className="flex flex-col items-center">
-                                <span className="text-[8px] text-slate-500">K</span>
-                                <input type="number" value={p.kills} onChange={(e) => handleEditExtractedStat(i, 'kills', parseInt(e.target.value) || 0)} className="w-10 bg-transparent text-emerald-400 text-center outline-none" />
+
+                            {/* Inputs de K/D/A/Damage/HS */}
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <div className="flex gap-2 text-xs font-mono bg-slate-900 p-2 rounded-lg border border-slate-700 overflow-x-auto">
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[8px] text-slate-500">K</span>
+                                  <input type="number" value={p.kills} onChange={(e) => handleEditExtractedStat(i, 'kills', parseInt(e.target.value) || 0)} className="w-10 bg-transparent text-emerald-400 text-center outline-none font-bold" />
+                                </div>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[8px] text-slate-500">D</span>
+                                  <input type="number" value={p.deaths} onChange={(e) => handleEditExtractedStat(i, 'deaths', parseInt(e.target.value) || 0)} className="w-10 bg-transparent text-rose-400 text-center outline-none font-bold" />
+                                </div>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[8px] text-slate-500">A</span>
+                                  <input type="number" value={p.assists} onChange={(e) => handleEditExtractedStat(i, 'assists', parseInt(e.target.value) || 0)} className="w-10 bg-transparent text-sky-400 text-center outline-none font-bold" />
+                                </div>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[8px] text-slate-500">DMG</span>
+                                  <input type="number" value={p.damage} onChange={(e) => handleEditExtractedStat(i, 'damage', parseInt(e.target.value) || 0)} className="w-12 bg-transparent text-orange-400 text-center outline-none font-bold" />
+                                </div>
+                                <div className="flex flex-col items-center">
+                                  <span className="text-[8px] text-slate-500">%HS</span>
+                                  <input type="number" value={p.hsPercent} onChange={(e) => handleEditExtractedStat(i, 'hsPercent', parseInt(e.target.value) || 0)} className="w-10 bg-transparent text-purple-400 text-center outline-none font-bold" />
+                                </div>
                               </div>
-                              <div className="flex flex-col items-center">
-                                <span className="text-[8px] text-slate-500">D</span>
-                                <input type="number" value={p.deaths} onChange={(e) => handleEditExtractedStat(i, 'deaths', parseInt(e.target.value) || 0)} className="w-10 bg-transparent text-rose-400 text-center outline-none" />
-                              </div>
-                              <div className="flex flex-col items-center">
-                                <span className="text-[8px] text-slate-500">A</span>
-                                <input type="number" value={p.assists} onChange={(e) => handleEditExtractedStat(i, 'assists', parseInt(e.target.value) || 0)} className="w-10 bg-transparent text-sky-400 text-center outline-none" />
-                              </div>
-                              <div className="flex flex-col items-center">
-                                <span className="text-[8px] text-slate-500">DMG</span>
-                                <input type="number" value={p.damage} onChange={(e) => handleEditExtractedStat(i, 'damage', parseInt(e.target.value) || 0)} className="w-12 bg-transparent text-orange-400 text-center outline-none" />
-                              </div>
-                              <div className="flex flex-col items-center">
-                                <span className="text-[8px] text-slate-500">%HS</span>
-                                <input type="number" value={p.hsPercent} onChange={(e) => handleEditExtractedStat(i, 'hsPercent', parseInt(e.target.value) || 0)} className="w-10 bg-transparent text-purple-400 text-center outline-none" />
+
+                              {/* Ações por Jogador: Marcar Quitter / Complete / Remover */}
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleAbandon(i)}
+                                  title={p.isAbandon ? "Remover status de desertor" : "Marcar como desertor (quitter)"}
+                                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                    p.isAbandon
+                                      ? 'bg-rose-600 text-white border-rose-500'
+                                      : 'bg-slate-900 hover:bg-rose-950/60 text-rose-300 border-slate-700 hover:border-rose-600/50'
+                                  }`}
+                                >
+                                  ⚠️ {p.isAbandon ? 'Quitter' : 'Quit'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleToggleComplete(i)}
+                                  title={p.isComplete ? "Remover status de complete" : "Marcar como complete"}
+                                  className={`px-2.5 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                                    p.isComplete
+                                      ? 'bg-amber-600 text-white border-amber-500'
+                                      : 'bg-slate-900 hover:bg-amber-950/60 text-amber-300 border-slate-700 hover:border-amber-600/50'
+                                  }`}
+                                >
+                                  🌟 Complete
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveExtractedPlayer(i)}
+                                  title="Remover jogador desta partida"
+                                  className="p-1.5 rounded-lg bg-slate-900 hover:bg-rose-900/50 text-slate-400 hover:text-rose-300 border border-slate-700 hover:border-rose-700 transition-all text-xs"
+                                >
+                                  ✕
+                                </button>
                               </div>
                             </div>
                           </div>

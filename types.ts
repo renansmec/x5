@@ -21,6 +21,8 @@ export interface PlayerStats {
   assists: number;
   damage: number;
   hsPercent?: number;
+  abandons?: number;
+  completes?: number;
 }
 
 export interface FullRankingEntry extends PlayerStats {
@@ -28,13 +30,7 @@ export interface FullRankingEntry extends PlayerStats {
   avatarUrl?: string;
   steamUrl?: string;
   kd: number;
-  kda: number;
   damagePerMatch: number;
-  wins: number;
-  losses: number;
-  winRate: number;
-  score: number;
-  patent: { name: string; index: number; image: string };
   trend?: number;
 }
 
@@ -57,6 +53,8 @@ export interface ExtractedMatchData {
     assists: number;
     damage: number;
     hsPercent: number;
+    isAbandon?: boolean;
+    isComplete?: boolean;
   }[];
 }
 
@@ -79,5 +77,7 @@ export interface MatchRecord {
     assists: number;
     damage: number;
     hsPercent: number;
+    isAbandon?: boolean;
+    isComplete?: boolean;
   }[];
 }
