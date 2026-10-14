@@ -50,6 +50,7 @@ export interface ExtractedMatchData {
   team2Score: number;
   winningTeam: string;
   players: {
+    playerId?: string;
     nick: string;
     team: 'team1' | 'team2';
     kills: number;

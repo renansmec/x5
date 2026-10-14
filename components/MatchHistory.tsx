@@ -494,14 +494,26 @@ const MatchHistory: React.FC<MatchHistoryProps> = ({ matches, players, seasons, 
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-amber-500 to-emerald-500"></div>
 
                 <div className="relative p-5 flex flex-col md:flex-row items-center justify-between gap-5">
-                  {/* Data & Mapa */}
+                  {/* Data & Mapa & Status */}
                   <div className="flex flex-col items-center md:items-start w-full md:w-1/4">
                     <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mb-1.5 font-mono">
                       {new Date(match.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                     </span>
-                    <span className="px-3 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs sm:text-sm font-bold text-slate-300 uppercase tracking-wider">
-                      🗺️ {match.map}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="px-3 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs sm:text-sm font-bold text-slate-300 uppercase tracking-wider">
+                        🗺️ {match.map}
+                      </span>
+                      {match.players?.some(p => p.isAbandoned) && (
+                        <span className="px-2 py-0.5 bg-rose-500/20 text-rose-300 border border-rose-500/40 rounded text-[10px] font-bold uppercase tracking-wider">
+                          ⚠️ Abandono
+                        </span>
+                      )}
+                      {match.players?.some(p => p.isComplete) && (
+                        <span className="px-2 py-0.5 bg-sky-500/20 text-sky-300 border border-sky-500/40 rounded text-[10px] font-bold uppercase tracking-wider">
+                          🛡️ Complete
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Placar Central */}
